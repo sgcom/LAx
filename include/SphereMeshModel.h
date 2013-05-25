@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /*
  Copyright (C)2013 Stefan Ganev 
  All rights reserved.
@@ -24,6 +25,8 @@
 
  */
 
+=======
+>>>>>>> e2d5a2a7bfa20c82541a72fcff8a1b39c94fed12
 #pragma once
 
 #include "cinder/Cinder.h"

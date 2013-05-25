@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /*
  Copyright (C)2013 Stefan Ganev
  All rights reserved.
@@ -14,6 +15,8 @@
  POSSIBILITY OF SUCH DAMAGE.
 */
 
+=======
+>>>>>>> e2d5a2a7bfa20c82541a72fcff8a1b39c94fed12
 #pragma once
 
 #include <vector>
@@ -55,15 +58,25 @@ private:
     ci::Vec3f   mMinPos, mMaxPos, mCenterPos;
     bool        mIsCenterCalculated;
 public:
+<<<<<<< HEAD
     LorenzSolver() {};
     LorenzSolver( size_t numPositions, ci::Vec3f initCondition, float H=DEFAULT_H, float pS=DEFAULT_PAR_S, float pR=DEFAULT_PAR_R, float pB=DEFAULT_PAR_B ) :
                   mNumPositions(numPositions), mS(pS), mR(pR), mB(pB), mH(H), mOriginalInitCondition(initCondition), mStride(DEFAULT_STRIDE)  { initOnce(); }
+=======
+                LorenzSolver();
+                LorenzSolver( size_t numPositions, ci::Vec3f initPosition, float H=DEFAULT_H, float pS=DEFAULT_PAR_S, float pR=DEFAULT_PAR_R, float pB=DEFAULT_PAR_B );
+>>>>>>> e2d5a2a7bfa20c82541a72fcff8a1b39c94fed12
     void        setIntegrationStep( float h, size_t stride=DEFAULT_STRIDE );
     void        setInitialCondition( float x, float y, float z );
     void        updateInitialCondition( float dx, float dy, float dz );
     void        useRK4Toggle() { mUseRK4 = ! mUseRK4; }
+<<<<<<< HEAD
     void        useRK4()       { mUseRK4 = true; }
     void        useEuler()     { mUseRK4 = false; }
+=======
+    void        useRK4() { mUseRK4 = true; }
+    void        useEuler() { mUseRK4 = false; }
+>>>>>>> e2d5a2a7bfa20c82541a72fcff8a1b39c94fed12
     void        solve();
     std::vector<ci::Vec3f> 
                 getPositions() { return mPos; }
