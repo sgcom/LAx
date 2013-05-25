@@ -1,6 +1,6 @@
-## LAx: Lorenz Attractor eXplorer
+#### LAx: Lorenz Attractor eXplorer
 
-**A 3D model of the Lorenz Attractor, made with C++, Cinder (libcinder.org), and OpenGL**
+*A 3D model of the Lorenz Attractor, made with C++, Cinder (libcinder.org), and OpenGL*
 
 Dependencies:
 
