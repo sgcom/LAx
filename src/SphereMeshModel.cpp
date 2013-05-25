@@ -1,5 +1,4 @@
 /*
-<<<<<<< HEAD
  Copyright (C)2013 Stefan Ganev
  All rights reserved.
  https://github.com/stefan-g/
@@ -24,28 +23,6 @@
  of indices.
 
  */
-=======
-** The purpose of this class is to model a VBO-friendly sphere
-** with dynamic positions and color.
-**
-** The design consideration is to use minimal number of vertices, 
-** for computational efficiency when dynamically updating positions 
-** or colors. The number of vertices is much smaller that the number
-** of indices.
-**
-** Perhaps the initialization process could be further optimized.
-** Once the model is initialized, and the static indices and normal are 
-** taken, the only method meant to be called between frames is
-** updateVBO().
-**
-** Otherwise, the parametric calculations are trivial and based on 
-** multiple other implementations, with the "egg-factors" added on.
-**
-** Author: Stefan Ganev, https://github.com/stefan-g/
-** The code is free to use with no warranty and no expectations for support.
-*/
-
->>>>>>> e2d5a2a7bfa20c82541a72fcff8a1b39c94fed12
 
 #include "cinder/Cinder.h"
 #include "cinder/gl/Vbo.h"
@@ -293,5 +270,4 @@ void SphereMeshModel::updateVBO( ci::gl::VboMesh::VertexIter &vertexIter, const 
         ++vertexIter;
     }
 }
-
 

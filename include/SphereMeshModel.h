@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /*
  Copyright (C)2013 Stefan Ganev 
  All rights reserved.
@@ -25,8 +24,6 @@
 
  */
 
-=======
->>>>>>> e2d5a2a7bfa20c82541a72fcff8a1b39c94fed12
 #pragma once
 
 #include "cinder/Cinder.h"
@@ -36,21 +33,6 @@
 #include <vector>
 #include <stdint.h>
 
-/*
-** The purpose of this class is to model a VBO-friendly sphere
-** with dynamic positions and color.
-**
-** The design consideration is to use minimal number of vertices, 
-** for computational efficiency when dynamically updating positions 
-** or colors. The number of vertices is much smaller that the number
-** of indices.
-**
-** Otherwise, the parametric calculations are based on multiple other 
-** implementations.
-**
-** Author: Stefan Ganev, https://github.com/stefan-g/
-** The code is free to use with no warranty and no expectations for support.
-*/
 
 class SphereMeshModel 
 {

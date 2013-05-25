@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /*
  Copyright (C)2013 Stefan Ganev
  All rights reserved.
@@ -15,8 +14,6 @@
  POSSIBILITY OF SUCH DAMAGE.
 */
 
-=======
->>>>>>> e2d5a2a7bfa20c82541a72fcff8a1b39c94fed12
 #include "cinder/app/AppNative.h"
 #include "cinder/gl/gl.h"
 #include "cinder/Camera.h"
@@ -95,7 +92,6 @@ void LAxApp::setup()
     mCenterPos = Vec3f::zero();
 
     // CAMERA: ...
-<<<<<<< HEAD
     mCamEyePoint = Vec3f( 30.6671f, -40.4094f, -33.9354f ); // initial eye point
     mCamUp = Vec3f( -0.401262f, -0.801144f, 0.444025f );    // initial camera up vector
     mCamTarget = Vec3f::zero();                             // we keep looking at point zero.
@@ -103,19 +99,6 @@ void LAxApp::setup()
     mRotationStep = 0.1f;
 
     // LIGHT Position:
-=======
-    //mCamEyePoint: [30.6671,-40.4094,-33.9354], mCamUp: [-0.401262,-0.801144,0.444025]
-    mCamEyePoint = Vec3f( 30.6671f, -40.4094f, -33.9354f ); // initial eye point
-    mCamUp = Vec3f( -0.401262f, -0.801144f, 0.444025f );         // initial camera up vector
-    //mCamEyePoint = Vec3f( 10.0f, 5.0f, 60.0f ); // initial eye point
-    //mCamUp = Vec3f( 0.0f, 1.0f, 0.0f );         // initial camera up vector
-    mCamTarget = Vec3f::zero();                 // we keep looking at point zero.
-    mCamFovAngle = 60.0f;                       // field of view angle
-    mRotationStep = 0.1f;
-
-    // LIGHT Position:
-    //mLightPosition = Vec4f(200.0f, 300.0f, 20.0f, 1.0f);
->>>>>>> e2d5a2a7bfa20c82541a72fcff8a1b39c94fed12
     mLightPosition = Vec4f(50.0f, -270.0f, 230.0f, 1.0f);
 
     // MODEL: Init the model, see initModel()
@@ -147,12 +130,6 @@ void LAxApp::setup()
     float materialSpecularRefl[] = { 0.8f, 0.8f, 0.8f, 1.0f };
     glMaterialfv(GL_FRONT, GL_SPECULAR, materialSpecularRefl);
     glMateriali(GL_FRONT, GL_SHININESS, 88);
-<<<<<<< HEAD
-=======
-
-    //rotateModel(-0.9f, -2.5f);
-
->>>>>>> e2d5a2a7bfa20c82541a72fcff8a1b39c94fed12
 }
 
 
@@ -173,13 +150,8 @@ void LAxApp::initModel ()
     // 
     // 3D sphere mesh model to visualize the solution
     mSphereModel = SphereMeshModel( MODEL_SPHERE_SLICES, MODEL_SPHERE_STACKS, 0.8f );
-<<<<<<< HEAD
     // here we put the different parts of the model together;
     // the arithmetic below is somewhat tricky because of how the the sphere tessalation is done.
-=======
-    // here we put the different padrts of the model together
-    // the arithmetic below is tricky because of how the the sphere tessalation is done.
->>>>>>> e2d5a2a7bfa20c82541a72fcff8a1b39c94fed12
     mModelNumElements = NUM_POSITIONS;
     mIndicesPerSphere = 6 * MODEL_SPHERE_SLICES * (MODEL_SPHERE_STACKS-1);
     uint32_t nVerticesPerSphere= MODEL_SPHERE_SLICES * (MODEL_SPHERE_STACKS-1) + 2;
@@ -281,29 +253,9 @@ void LAxApp::draw()
                 drawRange( mModelMesh, 0, mIterationCnt * mIndicesPerSphere);
             } else {
                 gl::draw( mModelMesh );
-<<<<<<< HEAD
             }
         }
     gl::popModelView();
-=======
-                //drawRange( mModelMesh, 2990 * mIndicesPerSphere, 2999 * mIndicesPerSphere);
-            }
-        }
-        //gl::color( Color( 1.0f, 0.25f, 0.0f ) );
-        //gl::drawStrokedCube( Vec3f(10,0,0), Vec3f(5.0f, 5.0f, 5.0f) );
-        //gl::color( Color( 0.2f, 1.0f, 0.1f ) );
-        //gl::drawStrokedCube( Vec3f(10,-20,10), Vec3f(5.0f, 5.0f, 5.0f) );
-    gl::popModelView();
-
-    //gl::pushModelView();
-    //    gl::color( Color( 1.0f, 0.25f, 0.0f ) );
-    //    gl::drawStrokedCube( 0.7f*Vec3f(mCamEyePoint), Vec3f(10.0f, 10.0f, 10.0f) );
-    //    //gl::translate( mCenterPos );
-    //    gl::color( Color( 0.2f, 1.0f, 0.1f ) );
-    //    gl::translate( -mCenterPos );
-    //    gl::drawStrokedCube( Vec3f(10,0,0), Vec3f(5.0f, 5.0f, 5.0f) );
-    //gl::popModelView();
->>>>>>> e2d5a2a7bfa20c82541a72fcff8a1b39c94fed12
 }
 
 
@@ -347,11 +299,6 @@ void LAxApp::keyDown( KeyEvent event )
         zoom(1.0f);
     } else if( event.getChar() == '/' ) {
         mSolver.useRK4Toggle();
-<<<<<<< HEAD
-=======
-    //} else if( event.getCode() == KeyEvent::KEY_0 ) {
-    //    mSolver.reset();
->>>>>>> e2d5a2a7bfa20c82541a72fcff8a1b39c94fed12
     } else if( event.getChar() == '.' ) {
         mIterationCnt = 0;
         mIterativeDraw = true; //! mIterativeDraw;
@@ -394,11 +341,7 @@ void LAxApp::rotateModel( float leftRight, float upDown )
 
 
 /*
-<<<<<<< HEAD
 ** Camera zoom-in / zoom-out
-=======
-** zoom-in / zoom-out
->>>>>>> e2d5a2a7bfa20c82541a72fcff8a1b39c94fed12
 */
 void LAxApp::zoom( float w )
 {

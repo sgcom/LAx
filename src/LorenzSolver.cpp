@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /*
  Copyright (C)2013 Stefan Ganev
  All rights reserved.
@@ -19,8 +18,6 @@
    This might be not the most computationally efficient implementation performance-wise; 
    the priority is on keeping the code clearly understandable.
 */
-=======
->>>>>>> e2d5a2a7bfa20c82541a72fcff8a1b39c94fed12
 
 #include <vector>
 
@@ -32,27 +29,6 @@
 using namespace ci;
 
 
-<<<<<<< HEAD
-=======
-LorenzSolver::LorenzSolver() 
-{
-}
-
-
-LorenzSolver::LorenzSolver( size_t numPositions, Vec3f initCondition, float H, float pS, float pR, float pB )
-{
-    mNumPositions = numPositions;
-    mS = pS; 
-    mR = pR; 
-    mB = pB;
-    mH = H;
-    mOriginalInitCondition = initCondition;
-    mStride = DEFAULT_STRIDE;
-    initOnce();
-}
-
-
->>>>>>> e2d5a2a7bfa20c82541a72fcff8a1b39c94fed12
 void LorenzSolver::initOnce()
 {
     mUseRK4 = true;
@@ -123,15 +99,6 @@ void LorenzSolver::nextStepEuler( Vec3f& u_t0, Vec3f& u_t1 )
     u_t1 = u_t0 + mH * LorenzEquations( u_t0 );
 }
 
-<<<<<<< HEAD
-=======
-/////////////////////////////////////////////////////////////////////////////////
-// Note:
-//   This might be not the most computationally efficient implementation 
-//   performance-wise, but I'd like  to keeep it this way for its clarity 
-//   about what is going on.
-/////////////////////////////////////////////////////////////////////////////////
->>>>>>> e2d5a2a7bfa20c82541a72fcff8a1b39c94fed12
 
 void LorenzSolver::nextStepRK4( Vec3f& u_t0, Vec3f& u_t1 )
 {
