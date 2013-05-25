@@ -13,8 +13,8 @@
 #define DEFAULT_PAR_S   10.0f   // default param sigma
 #define DEFAULT_PAR_R   30.0f   // default param r
 #define DEFAULT_PAR_B   3.0f    // default param b
-#define DEFAULT_H       0.001f   // Integration step
-#define DEFAULT_STRIDE  10       // See below
+#define DEFAULT_H       0.01f   // Integration step
+#define DEFAULT_STRIDE  1       // See below
 
 // Tweaking the {STRIDE,H} combination can be used to reduce the integration 
 // step and visualize only each N'th solution. This allows for exploring the 
