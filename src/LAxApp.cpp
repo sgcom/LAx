@@ -67,13 +67,17 @@ public:
 private:
 
     void  initModel();
-    void  initText();
+    void  initInfoPanel();
     void  updateCameraPerspective();
     void  rotateModel( float leftRight, float upDown );
     void  zoom( float w );
 
 };
 
+
+/*
+** Called once before setup(). Used for windows settings mostly.
+*/
 
 void LAxApp::prepareSettings( Settings *settings ) 
 {
@@ -85,14 +89,17 @@ void LAxApp::prepareSettings( Settings *settings )
 
 
 /*
-** Application set-up. Executed once after application starts.
+** Application set-up. Executed once after application starts, 
+** after prepareSettings() and before everything else.
 */
 void LAxApp::setup()
 {
+    // Random numbers generator
     mRand = Rand();
-    initText();
+    // Info panel
+    initInfoPanel();
     mDisplayInfoPanel = true;
-    mCenterPos = Vec3f::zero();
+
 
     // CAMERA: ...
     mCamEyePoint = Vec3f( 30.6671f, -40.4094f, -33.9354f ); // initial eye point
@@ -108,8 +115,9 @@ void LAxApp::setup()
     initModel();
     mIterationCnt = 0;
     mIterativeDraw = false;
+    mCenterPos = Vec3f::zero(); // model center - will be updated later
 
-    // Standard legacy OpenGL stuff below, mostly light and material properties.
+    // Standard legacy OpenGL stuff below; mostly light and material properties.
     // TODO better light with custom shader
     //
     gl::enableDepthWrite();
@@ -136,10 +144,13 @@ void LAxApp::setup()
 }
 
 
-void LAxApp::initText() 
+/*
+** Init the info panel.
+*/
+void LAxApp::initInfoPanel() 
 {
-   	TextLayout layout;
-    //layout.clear( ColorA::black() );
+    TextLayout layout;
+    layout.clear( ColorA::black() );
     layout.setColor(ColorA::white() );
     layout.setBorder(10, 10);
     layout.setFont( Font( "Arial Black", 20.0 ) );
@@ -172,7 +183,8 @@ void LAxApp::initText()
 ** This method builds the model. 
 ** Our model here can be thought of as having 3 components:
 **
-**   o The actual Lorenz equations solver. The other parts only help visualize the result;
+**   o The actual Lorenz equations solver makes the domain model. 
+**     The other parts only help visualize the result;
 **   o A single "VBO-ready" sphere mesh defined with vertices, positions and normals;
 **   o The Cinder VBO mesh that holds everything together and interfaces with OpenGL.
 **
@@ -186,7 +198,6 @@ void LAxApp::initModel ()
     // 3D sphere mesh model to visualize the solution
     mSphereModel = SphereMeshModel( MODEL_SPHERE_SLICES, MODEL_SPHERE_STACKS, 0.8f );
     // here we put the different parts of the model together;
-    // the arithmetic below is somewhat tricky because of how the the sphere tessalation is done.
     mModelNumElements = NUM_POSITIONS;
     mIndicesPerSphere = 6 * MODEL_SPHERE_SLICES * (MODEL_SPHERE_STACKS-1);
     uint32_t nVerticesPerSphere= MODEL_SPHERE_SLICES * (MODEL_SPHERE_STACKS-1) + 2;
@@ -211,7 +222,7 @@ void LAxApp::initModel ()
 
 
 /*
-** This callback is executed when the user resizes the application window.
+** This callback is executed when the application window is resized.
 */
 void LAxApp::resize()
 {
@@ -232,11 +243,14 @@ void LAxApp::updateCameraPerspective()
 
 
 /*
-** Called on each frame before rendering.
+** update() is called on each frame before rendering.
+** Updates anything that need to change between frames.
 */
 void LAxApp::update()
 {
     static size_t step = 0;
+
+    // TODO Optimize this part to recalculate the model etc only on change.
     mSolver.solve();
     vector<Vec3f> positions = mSolver.getPositions();
     size_t numElements = positions.size();
@@ -277,6 +291,7 @@ void LAxApp::update()
 */
 void LAxApp::draw()
 {
+    // Render the model................................
     gl::clear( Color( 0.0f, 0.05f, 0.1f ) );
     glLightfv( GL_LIGHT0, GL_POSITION, (const GLfloat *) &mLightPosition );
     glEnable( GL_LIGHTING );
@@ -290,7 +305,7 @@ void LAxApp::draw()
             }
         }
     gl::popMatrices();
-
+    //...............................and the info panel
     if( mDisplayInfoPanel ) {
         glDisable( GL_LIGHTING );
         glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
@@ -365,13 +380,17 @@ void LAxApp::keyDown( KeyEvent event )
 }
 
 
+/*
+** One of the mouse buttons is pressed
+*/
 void LAxApp::mouseDown( MouseEvent event )
 {
 	mCurrentMouseDown = mInitialMouseDown = event.getPos();
 }
 
-// Mouse drag rotates the model
-//
+/*
+** Mouse dragged: rotate the model
+*/
 void LAxApp::mouseDrag( MouseEvent event )
 {
 	mCurrentMouseDown = event.getPos();
@@ -382,8 +401,9 @@ void LAxApp::mouseDrag( MouseEvent event )
 }
 
 
-// Mouse whell zooms in/out (illusion of moving the model closer or farther)
-//
+/*
+** Mouse whell rotated: zoom in/out
+*/
 void LAxApp::mouseWheel( MouseEvent event )
 {
     //console() << "mouse wheel: " << event.getWheelIncrement() << endl;
@@ -392,9 +412,12 @@ void LAxApp::mouseWheel( MouseEvent event )
 
 
 /*
+** rotateModel()
+**
 ** This method creates an illusion of rotating the model.
-** It actually rotates the camera and the light position simultaneously around the center.
-** In case it is desired to appear that the camera rotates around the model -
+** It actually rotates the camera and the light position 
+** simultaneously around the center. In case it is desired 
+** to appear that the camera rotates around the model -
 ** as opposed to the model rotating in front of the camera -
 ** then try to disable the light rotation and possibly swap 
 ** the left-right and the up-down rotation direction (+- sign) 

@@ -27,10 +27,7 @@
 // DEFAULT_H    0.01    0.001   0.0001
 //
 // *NOTE*: Increasing DEFAULT_H above 0.01 can lead quickly to getting of the 
-// range of stability for the integration method and unexpected/unbounded 
-// results. It would not mean that something happened to the attractor - instead,
-// it would be a problem with how we use our tool to numerically calculate it.
-
+// range of stability and unexpected/unbounded results.
 
 class LorenzSolver
 {

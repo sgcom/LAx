@@ -18,6 +18,8 @@
 using namespace ci;
 
 
+// Initialize
+//
 void LorenzSolver::initOnce()
 {
     mUseRK4 = true;
@@ -30,6 +32,8 @@ void LorenzSolver::initOnce()
 }
 
 
+// Set initial condition
+//
 void LorenzSolver::setInitCondition()
 {
     mPos.clear();
@@ -38,6 +42,8 @@ void LorenzSolver::setInitCondition()
 }
 
 
+// Set integration step and stride
+//
 void LorenzSolver::setIntegrationStep( float h, size_t stride )
 {
     mH = h;
@@ -45,6 +51,8 @@ void LorenzSolver::setIntegrationStep( float h, size_t stride )
 }
 
 
+// Modify the initial condition 
+//
 void LorenzSolver::setInitialCondition( float x, float y, float z )
 {
     mInitCondition.x = x;
@@ -53,6 +61,9 @@ void LorenzSolver::setInitialCondition( float x, float y, float z )
 }
 
 
+// Change the initial condition with some small delta,
+// to experiment with the sensitive dependence
+//
 void LorenzSolver::updateInitialCondition( float dx, float dy, float dz )
 {
     mInitCondition.x += dx;
@@ -61,6 +72,8 @@ void LorenzSolver::updateInitialCondition( float dx, float dy, float dz )
 }
 
 
+// Calculate the solutions
+//
 void LorenzSolver::solve()
 {
     setInitCondition();
@@ -75,24 +88,26 @@ void LorenzSolver::solve()
 }
 
 
+// Calculate one step
+//
 void LorenzSolver::nextStep( Vec3f& u_t0, Vec3f& u_t1 )
 {
     mUseRK4 ? nextStepRK4( u_t0, u_t1 ) : nextStepEuler( u_t0, u_t1 );
 }
 
 
+// Euler integration step
+//
 void LorenzSolver::nextStepEuler( Vec3f& u_t0, Vec3f& u_t1 )
 {
-    // Euler integration step
-    //
     u_t1 = u_t0 + mH * LorenzEquations( u_t0 );
 }
 
 
+// 4th order Runge-Kutta (RK4) integration step
+//
 void LorenzSolver::nextStepRK4( Vec3f& u_t0, Vec3f& u_t1 )
 {
-    // 4th order Runge-Kutta (RK4) integration step
-    //
     Vec3f k1, k2, k3, k4;
     k1 = LorenzEquations( u_t0 );
     k2 = LorenzEquations( u_t0 + 0.5f*mH*k1 );
@@ -102,6 +117,9 @@ void LorenzSolver::nextStepRK4( Vec3f& u_t0, Vec3f& u_t1 )
 }
 
 
+// Used to find the geometric center of the model,
+// used to visualize rotation around the center
+//
 void LorenzSolver::trackBounds( Vec3f& u_t )
 {
     if( u_t.x > mMaxPos.x ) { mMaxPos.x = u_t.x; }
@@ -113,6 +131,9 @@ void LorenzSolver::trackBounds( Vec3f& u_t )
 }
 
 
+// Get the geometric center of the model 
+// (in phase space, as everything else).
+//
 Vec3f LorenzSolver::getCenterPos()
 {
     if( ! mIsCenterCalculated ) {
@@ -127,8 +148,7 @@ Vec3f LorenzSolver::getCenterPos()
 
 /////////////////////////////////////////
 //
-// The actual Lorenz equations:
-//
+// Finally, the actual Lorenz equations:
 //
 Vec3f  LorenzSolver::LorenzEquations( Vec3f u )
 {

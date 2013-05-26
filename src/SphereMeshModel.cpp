@@ -3,13 +3,16 @@
  All rights reserved. Licensed under the BSD 2-Clause License; 
  see License.txt and http://opensource.org/licenses/BSD-2-Clause.
 
- The purpose of this class is to model a VBO-friendly sphere
+ The purpose of this class is to model a VBO-friendly sphere mesh
  with dynamic positions and color.
 
  The design consideration is to use minimal number of vertices, 
  for computational efficiency when dynamically updating positions 
  or colors. The number of vertices is much smaller that the number
  of indices.
+
+ NOTE: Building the mesh may take some significant time.
+ ----  It is supposed to be executed only once for the app life cycle.
 
  */
 
