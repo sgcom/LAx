@@ -8,6 +8,9 @@
 #include "cinder/gl/gl.h"
 #include "cinder/Camera.h"
 #include "cinder/Rand.h"
+#include "cinder/gl/Texture.h"
+#include "cinder/Text.h"
+#include "cinder/Font.h"
 
 #include "Resources.h"
 #include "SphereMeshModel.h"
@@ -42,7 +45,12 @@ private:
     Vec3f              mCenterPos;
     uint32_t           mIterationCnt;
     bool               mIterativeDraw;
+    Vec2i              mCurrentMouseDown;
+    Vec2i              mInitialMouseDown;
     Rand               mRand;
+    gl::Texture        mInfoPanelTexture;
+    Vec2i              mInfoPanelSize;
+    bool               mDisplayInfoPanel;
 
 public:
 
@@ -52,10 +60,14 @@ public:
     void  draw();
     void  resize();
     void  keyDown( KeyEvent event );
+    void  mouseDown( MouseEvent event );
+    void  mouseDrag( MouseEvent event );
+    void  mouseWheel( MouseEvent event );
 
 private:
 
     void  initModel();
+    void  initText();
     void  updateCameraPerspective();
     void  rotateModel( float leftRight, float upDown );
     void  zoom( float w );
@@ -66,9 +78,9 @@ private:
 void LAxApp::prepareSettings( Settings *settings ) 
 {
     // Window size and frame rate
-    settings->setWindowSize( 1280/2, 720 );
+    settings->setWindowSize( 1280, 720 );
     settings->setFrameRate( 30.0f );
-    settings->enableConsoleWindow(true);
+    //settings->enableConsoleWindow(true);
 }
 
 
@@ -78,7 +90,8 @@ void LAxApp::prepareSettings( Settings *settings )
 void LAxApp::setup()
 {
     mRand = Rand();
-
+    initText();
+    mDisplayInfoPanel = true;
     mCenterPos = Vec3f::zero();
 
     // CAMERA: ...
@@ -120,6 +133,38 @@ void LAxApp::setup()
     float materialSpecularRefl[] = { 0.8f, 0.8f, 0.8f, 1.0f };
     glMaterialfv(GL_FRONT, GL_SPECULAR, materialSpecularRefl);
     glMateriali(GL_FRONT, GL_SHININESS, 88);
+}
+
+
+void LAxApp::initText() 
+{
+   	TextLayout layout;
+    //layout.clear( ColorA::black() );
+    layout.setColor(ColorA::white() );
+    layout.setBorder(10, 10);
+    layout.setFont( Font( "Arial Black", 20.0 ) );
+    layout.addLine( "Lorenz Attractor Explorer" );
+    layout.addLine( " " );
+    layout.addLine( "1   increase initial condition x by 0.0001" );
+    layout.addLine( "2   increase initial condition y by 0.0001" );
+    layout.addLine( "3   increase initial condition z by 0.0001" );
+    layout.addLine( "4   reset the initial condition" );
+    layout.addLine( "r   set random initial condition" );
+    layout.addLine( ".   start iterative draw" );
+    layout.addLine( "/   toggle between RK4 and Euler integration" );
+    layout.addLine( "z   reset integration step to 0.01" );
+    layout.addLine( "x   set integration step to 0.001" );
+    layout.addLine( "c   set integration step to 0.0001" );
+    layout.addLine( "   " );
+    layout.addLine( "arrows, mouse drag - rotate model   " );
+    layout.addLine( "+|-, mouse wheel - zoom in/out   " );
+    layout.addLine( "   " );
+    layout.addLine( "?   toggle this information panel" );
+    Surface8u rendered = layout.render( false, false );
+    mInfoPanelSize = rendered.getSize();
+    console() << "mInfoPanelSize: " << mInfoPanelSize << endl;
+    mInfoPanelTexture = gl::Texture( rendered );
+
 }
 
 
@@ -233,10 +278,9 @@ void LAxApp::update()
 void LAxApp::draw()
 {
     gl::clear( Color( 0.0f, 0.05f, 0.1f ) );
-
     glLightfv( GL_LIGHT0, GL_POSITION, (const GLfloat *) &mLightPosition );
-
-    gl::pushModelView();
+    glEnable( GL_LIGHTING );
+    gl::pushMatrices();
         gl::translate( -mCenterPos );
         if( mModelMesh ) {
             if( mIterativeDraw ) {
@@ -245,7 +289,20 @@ void LAxApp::draw()
                 gl::draw( mModelMesh );
             }
         }
-    gl::popModelView();
+    gl::popMatrices();
+
+    if( mDisplayInfoPanel ) {
+        glDisable( GL_LIGHTING );
+        glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
+        gl::pushMatrices();
+            gl::color( 1.0f, 1.0f, 1.0f, 0.66f );
+            gl::setMatricesWindow( getWindowSize() );
+            Vec2i textLoc = ( getWindowSize() - mInfoPanelSize ) / 2;
+            Area textArea( textLoc, textLoc + mInfoPanelTexture.getSize() );
+            gl::draw( mInfoPanelTexture, textLoc );
+            gl::drawStrokedRect( textArea );
+        gl::popMatrices();
+    }
 }
 
 
@@ -266,6 +323,9 @@ void LAxApp::keyDown( KeyEvent event )
         mSolver.setInitialCondition(12.0f,-41.0f,17.0f);
     } else if( event.getChar() == '6' ) {
         mSolver.setInitialCondition(-4.0f,31.0f,-33.0f);
+    } else if( event.getChar() == '7' ) {
+        mSolver.setInitialCondition(10.2f, -41.7f, -47.8f);
+        //10.1529,-41.688,-47.7567
     } else if( event.getChar() == 'r' ) {
         // random initial condition
         Vec3f rv = mRand.nextFloat(70.0f) * mRand.nextVec3f();
@@ -298,7 +358,36 @@ void LAxApp::keyDown( KeyEvent event )
         mSolver.setIntegrationStep( 0.001f, 10 );
     } else if( event.getChar() == 'c' ) {
         mSolver.setIntegrationStep( 0.0001f, 100 );
+    } else if( event.getChar() == '?' ) {
+        mDisplayInfoPanel = ! mDisplayInfoPanel;
     }
+    
+}
+
+
+void LAxApp::mouseDown( MouseEvent event )
+{
+	mCurrentMouseDown = mInitialMouseDown = event.getPos();
+}
+
+// Mouse drag rotates the model
+//
+void LAxApp::mouseDrag( MouseEvent event )
+{
+	mCurrentMouseDown = event.getPos();
+    Vec2f dm = mCurrentMouseDown - mInitialMouseDown;
+    //console() << "mouse: " << mInitialMouseDown << " : " << mCurrentMouseDown << " : " << dm << endl;
+    rotateModel(float(-dm.x)/50.0f, float(dm.y)/50.0f);
+    mInitialMouseDown = mCurrentMouseDown;
+}
+
+
+// Mouse whell zooms in/out (illusion of moving the model closer or farther)
+//
+void LAxApp::mouseWheel( MouseEvent event )
+{
+    //console() << "mouse wheel: " << event.getWheelIncrement() << endl;
+    zoom( event.getWheelIncrement() );
 }
 
 
@@ -326,7 +415,7 @@ void LAxApp::rotateModel( float leftRight, float upDown )
         mLightPosition = rotationMatrix * mLightPosition;
     }
     updateCameraPerspective(); 
-    console() << "mCamEyePoint: " << mCamEyePoint << ", mCamUp: " << mCamUp << ", mLightPosition: " << mLightPosition << endl;
+    //console() << "mCamEyePoint: " << mCamEyePoint << ", mCamUp: " << mCamUp << ", mLightPosition: " << mLightPosition << endl;
 }
 
 
