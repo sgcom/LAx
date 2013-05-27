@@ -385,7 +385,7 @@ void LAxApp::keyDown( KeyEvent event )
 */
 void LAxApp::mouseDown( MouseEvent event )
 {
-	mCurrentMouseDown = mInitialMouseDown = event.getPos();
+    mCurrentMouseDown = mInitialMouseDown = event.getPos();
 }
 
 /*
@@ -393,7 +393,7 @@ void LAxApp::mouseDown( MouseEvent event )
 */
 void LAxApp::mouseDrag( MouseEvent event )
 {
-	mCurrentMouseDown = event.getPos();
+    mCurrentMouseDown = event.getPos();
     Vec2f dm = mCurrentMouseDown - mInitialMouseDown;
     //console() << "mouse: " << mInitialMouseDown << " : " << mCurrentMouseDown << " : " << dm << endl;
     rotateModel(float(-dm.x)/50.0f, float(dm.y)/50.0f);
