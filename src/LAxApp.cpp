@@ -154,16 +154,17 @@ void LAxApp::initInfoPanel()
     layout.clear( ColorA::black() );
     layout.setColor(ColorA::white() );
     layout.setBorder(10, 10);
-    layout.setFont( Font( "Arial Black", 20.0 ) );
+    layout.setFont( Font( "Arial", 18.0 ) );
     layout.addLine( "Lorenz Attractor Explorer" );
     layout.addLine( " " );
     layout.addLine( "1   increase initial condition x by 0.0001" );
     layout.addLine( "2   increase initial condition y by 0.0001" );
     layout.addLine( "3   increase initial condition z by 0.0001" );
     layout.addLine( "4   reset the initial condition" );
-    layout.addLine( "r   set random initial condition" );
+    layout.addLine( "r   random initial condition" );
+    layout.addLine( "t   random model rotation" );
     layout.addLine( ".   start iterative draw" );
-    layout.addLine( "/   toggle between RK4 and Euler integration" );
+    layout.addLine( "/   toggle RK4 / Euler integration" );
     layout.addLine( "z   reset integration step to 0.01" );
     layout.addLine( "x   set integration step to 0.001" );
     layout.addLine( "c   set integration step to 0.0001" );
@@ -253,7 +254,7 @@ void LAxApp::update()
 
     // Rebuild the model etc only on change.
     if( mUpdateModel ) {
-        console() << "Updating the model..." << endl;
+        //console() << "Updating the model..." << endl;
         mUpdateModel = false;
         mSolver.solve();
         vector<Vec3f> positions = mSolver.getPositions();
@@ -359,6 +360,8 @@ void LAxApp::keyDown( KeyEvent event )
         console() << "Init condition: " << rv << endl;
         mSolver.setInitialCondition( rv.x, rv.y, rv.z );
         mUpdateModel = true;
+    } else if( event.getChar() == 't' ) {
+        rotateModel(mRand.nextFloat(6.28f), mRand.nextFloat(6.28f) );
     } else if( event.getCode() == app::KeyEvent::KEY_LEFT ) {
         // rotate left
         rotateModel( mRotationStep, 0.0f );
