@@ -24,7 +24,7 @@ using namespace std;
 #define MODEL_SPHERE_STACKS 24
 #define MODEL_SPHERE_SLICES 24
 
-#define NUM_POSITIONS   3000    // Number of solutions to be visualized
+#define MAX_STEPS   3200    // Max number of steps (solutions)
 
 
 class LAxApp : public AppNative 
@@ -43,6 +43,7 @@ private:
     std::vector<Vec3f> mModelPositions;
     uint32_t           mModelNumElements;
     Vec3f              mCenterPos;
+    uint32_t           mNumStepsToRender;
     uint32_t           mIterationCnt;
     bool               mIterativeDraw;
     Vec2i              mCurrentMouseDown;
@@ -114,6 +115,7 @@ void LAxApp::setup()
 
     // MODEL: Init the model, see initModel()
     initModel();
+    mNumStepsToRender = MAX_STEPS;
     mIterationCnt = 0;
     mIterativeDraw = false;
     mCenterPos = Vec3f::zero(); // model center - will be updated later
@@ -163,8 +165,9 @@ void LAxApp::initInfoPanel()
     layout.addLine( "4   reset the initial condition" );
     layout.addLine( "r   random initial condition" );
     layout.addLine( "t   random model rotation" );
-    layout.addLine( ".   start iterative draw" );
+    layout.addLine( ".  (period) start iterative draw" );
     layout.addLine( "/   toggle RK4 / Euler integration" );
+    layout.addLine( ",  (comma) toggle number steps to render" );
     layout.addLine( "z   reset integration step to 0.01" );
     layout.addLine( "x   set integration step to 0.001" );
     layout.addLine( "c   set integration step to 0.0001" );
@@ -195,12 +198,12 @@ void LAxApp::initInfoPanel()
 void LAxApp::initModel ()
 {
     // Lorenz Equations Solver, starting from given initial condition
-    mSolver = LorenzSolver( NUM_POSITIONS, Vec3f(0.1f, 0.1f, 0.1f) );
+    mSolver = LorenzSolver( MAX_STEPS, Vec3f(0.1f, 0.1f, 0.1f) );
     // 
     // 3D sphere mesh model to visualize the solution
     mSphereModel = SphereMeshModel( MODEL_SPHERE_SLICES, MODEL_SPHERE_STACKS, 0.8f );
     // here we put the different parts of the model together;
-    mModelNumElements = NUM_POSITIONS;
+    mModelNumElements = MAX_STEPS;
     mIndicesPerSphere = 6 * MODEL_SPHERE_SLICES * (MODEL_SPHERE_STACKS-1);
     uint32_t nVerticesPerSphere= MODEL_SPHERE_SLICES * (MODEL_SPHERE_STACKS-1) + 2;
     uint32_t nVertices = mModelNumElements * nVerticesPerSphere;
@@ -307,7 +310,8 @@ void LAxApp::draw()
             if( mIterativeDraw ) {
                 drawRange( mModelMesh, 0, mIterationCnt * mIndicesPerSphere);
             } else {
-                gl::draw( mModelMesh );
+                drawRange( mModelMesh, 0, mNumStepsToRender * mIndicesPerSphere);
+                //gl::draw( mModelMesh );
             }
         }
     gl::popMatrices();
@@ -362,6 +366,14 @@ void LAxApp::keyDown( KeyEvent event )
         mUpdateModel = true;
     } else if( event.getChar() == 't' ) {
         rotateModel(mRand.nextFloat(6.28f), mRand.nextFloat(6.28f) );
+    } else if( event.getChar() == ',' ) {
+        mNumStepsToRender =
+            mNumStepsToRender == MAX_STEPS     ? MAX_STEPS/100 :
+            mNumStepsToRender == MAX_STEPS/100 ? MAX_STEPS/10  :
+            mNumStepsToRender == MAX_STEPS/10  ? MAX_STEPS/2   :
+                                                 MAX_STEPS     ;
+        console() << "mNumStepsToRender: " << mNumStepsToRender << endl;
+
     } else if( event.getCode() == app::KeyEvent::KEY_LEFT ) {
         // rotate left
         rotateModel( mRotationStep, 0.0f );
