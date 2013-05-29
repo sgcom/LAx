@@ -32,16 +32,6 @@ void LorenzSolver::initOnce()
 }
 
 
-// Set initial condition
-//
-void LorenzSolver::setInitCondition()
-{
-    mPos.clear();
-    mU0 = mInitCondition;
-    mPos.push_back(mU0);
-}
-
-
 // Set integration step and stride
 //
 void LorenzSolver::setIntegrationStep( float h, size_t stride )
@@ -51,7 +41,7 @@ void LorenzSolver::setIntegrationStep( float h, size_t stride )
 }
 
 
-// Modify the initial condition 
+// Set the initial condition 
 //
 void LorenzSolver::setInitialCondition( float x, float y, float z )
 {
@@ -76,7 +66,9 @@ void LorenzSolver::updateInitialCondition( float dx, float dy, float dz )
 //
 void LorenzSolver::solve()
 {
-    setInitCondition();
+    mPos.clear();
+    mU0 = mInitCondition;
+    mPos.push_back(mU0);
     for (size_t i = 1; i < mStride*mNumPositions; i++) {
         nextStep( mU0, mU1 );
         mU0 = mU1;

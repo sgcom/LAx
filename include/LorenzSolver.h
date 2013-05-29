@@ -57,7 +57,6 @@ public:
     ci::Vec3f   getCenterPos();
 private:
     void      initOnce() ;
-    void      setInitCondition();
     void      nextStep( ci::Vec3f& u_t0, ci::Vec3f& u_t1 );
     void      nextStepRK4( ci::Vec3f& u_t0, ci::Vec3f& u_t1 );
     void      nextStepEuler( ci::Vec3f& u_t0, ci::Vec3f& u_t1 );
