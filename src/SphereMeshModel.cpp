@@ -154,11 +154,9 @@ void SphereMeshModel::initUnitSphere()
 void SphereMeshModel::getStaticIndices( uint32_t startIndex, vector<uint32_t> &indices ) 
 {
     int a, b, c, d, e, f;
-    bool _00done = false;
 
     for ( uint32_t i = 0; i < nStacks; i++ ) {
         for ( uint32_t j = 0; j < nSlices; j++ ) {
-
             if( i == 0 ) {
                 a = 0;
                 b = j + 1;

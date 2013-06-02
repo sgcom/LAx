@@ -21,8 +21,8 @@ using namespace ci;
 using namespace ci::app;
 using namespace std;
 
-#define MODEL_SPHERE_STACKS 24
-#define MODEL_SPHERE_SLICES 24
+#define MODEL_SPHERE_STACKS 10
+#define MODEL_SPHERE_SLICES 20
 
 #define MAX_STEPS   3200    // Max number of steps (solutions)
 
@@ -40,7 +40,6 @@ private:
     SphereMeshModel    mSphereModel;
     gl::VboMesh        mModelMesh;
     uint32_t           mIndicesPerSphere;
-    std::vector<Vec3f> mModelPositions;
     uint32_t           mModelNumElements;
     Vec3f              mCenterPos;
     uint32_t           mNumStepsToRender;
@@ -53,6 +52,7 @@ private:
     Vec2i              mInfoPanelSize;
     bool               mDisplayInfoPanel;
     bool               mUpdateModel;
+    bool               mViewModelEnabled;
 
 public:
 
@@ -68,6 +68,7 @@ public:
 
 private:
 
+    void  ppl_initModel();
     void  initModel();
     void  initInfoPanel();
     void  updateCameraPerspective();
@@ -102,6 +103,7 @@ void LAxApp::setup()
     initInfoPanel();
     mDisplayInfoPanel = true;
     mUpdateModel = true;
+    mViewModelEnabled = true; // currently not used
 
     // CAMERA: ...
     mCamEyePoint = Vec3f( 30.6671f, -40.4094f, -33.9354f ); // initial eye point
@@ -148,43 +150,6 @@ void LAxApp::setup()
 
 
 /*
-** Init the info panel.
-*/
-void LAxApp::initInfoPanel() 
-{
-    TextLayout layout;
-    layout.clear( ColorA::black() );
-    layout.setColor(ColorA::white() );
-    layout.setBorder(10, 10);
-    layout.setFont( Font( "Arial", 18.0 ) );
-    layout.addLine( "Lorenz Attractor Explorer" );
-    layout.addLine( " " );
-    layout.addLine( "1   increase initial condition x by 0.0001" );
-    layout.addLine( "2   increase initial condition y by 0.0001" );
-    layout.addLine( "3   increase initial condition z by 0.0001" );
-    layout.addLine( "4   reset the initial condition" );
-    layout.addLine( "r   random initial condition" );
-    layout.addLine( "t   random model rotation" );
-    layout.addLine( ".  (period) start iterative draw" );
-    layout.addLine( "/   toggle RK4 / Euler integration" );
-    layout.addLine( ",  (comma) toggle number steps to render" );
-    layout.addLine( "z   reset integration step to 0.01" );
-    layout.addLine( "x   set integration step to 0.001" );
-    layout.addLine( "c   set integration step to 0.0001" );
-    layout.addLine( "   " );
-    layout.addLine( "arrows, mouse drag - rotate model   " );
-    layout.addLine( "+|-, mouse wheel - zoom in/out   " );
-    layout.addLine( "   " );
-    layout.addLine( "?   toggle this information panel" );
-    Surface8u rendered = layout.render( false, false );
-    mInfoPanelSize = rendered.getSize();
-    //console() << "mInfoPanelSize: " << mInfoPanelSize << endl;
-    mInfoPanelTexture = gl::Texture( rendered );
-
-}
-
-
-/*
 ** This method builds the model. 
 ** Our model here can be thought of as having 3 components:
 **
@@ -214,12 +179,15 @@ void LAxApp::initModel ()
     layout.setDynamicPositions();
     layout.setDynamicColorsRGB();
     vector<uint32_t> indices;
+    indices.reserve( nIndices );  // this saves the vector from having to grow many times
     vector<Vec3f> normals;
+    normals.reserve( nVertices ); // this saves the vector from having to grow many times
     for( uint32_t i=0; i<mModelNumElements; i++ ) {
         mSphereModel.getStaticNormals( normals );
         mSphereModel.getStaticIndices( i * nVerticesPerSphere, indices );
     }
     assert( nIndices == indices.size() );
+    assert( nVertices == normals.size() );
     mModelMesh = gl::VboMesh( nVertices, nIndices, layout, GL_TRIANGLES );
     mModelMesh.bufferIndices( indices );
     mModelMesh.bufferNormals( normals );
@@ -227,7 +195,7 @@ void LAxApp::initModel ()
 
 
 /*
-** This callback is executed when the application window is resized.
+** The application window has been resized: update anything window-bounds-sensitive.
 */
 void LAxApp::resize()
 {
@@ -256,21 +224,22 @@ void LAxApp::update()
     static size_t step = 0;
 
     // Rebuild the model etc only on change.
+    //mUpdateModel = true;
     if( mUpdateModel ) {
+        //mSolver.updateInitialCondition(0.0001f, 0.0f, 0.0f);
         //console() << "Updating the model..." << endl;
         mUpdateModel = false;
         mSolver.solve();
-        vector<Vec3f> positions = mSolver.getPositions();
-        size_t numElements = positions.size();
+        vector<ci::Vec3f>& positions = mSolver.getSolutions();
         mCenterPos = mSolver.getCenterPos();
         Color clr = Color::black();
         gl::VboMesh::VertexIter vertexIter = mModelMesh.mapVertexBuffer();
-        vector<Vec3f>::iterator e=positions.begin();
+        auto e = positions.begin();
         for( uint32_t i=0; e != positions.end(); ++e, i++ ) {
             // color by iteration count; starting blue, each following solution gets warmer.
-            clr.r = float(i)/float(numElements);
+            clr.r = float(i)/float(MAX_STEPS);
             clr.b = 1.0f - clr.r;
-            clr.g = 0.35f; 
+            clr.g = 0.33f; 
             // update the VBO positions and colors
             mSphereModel.updateVBO( vertexIter, *e, clr);
         }
@@ -305,13 +274,15 @@ void LAxApp::draw()
     glLightfv( GL_LIGHT0, GL_POSITION, (const GLfloat *) &mLightPosition );
     glEnable( GL_LIGHTING );
     gl::pushMatrices();
-        gl::translate( -mCenterPos );
-        if( mModelMesh ) {
-            if( mIterativeDraw ) {
-                drawRange( mModelMesh, 0, mIterationCnt * mIndicesPerSphere);
-            } else {
-                drawRange( mModelMesh, 0, mNumStepsToRender * mIndicesPerSphere);
-                //gl::draw( mModelMesh );
+        if( mViewModelEnabled ) {
+            gl::translate( -mCenterPos );
+            if( mModelMesh ) {
+                if( mIterativeDraw ) {
+                    drawRange( mModelMesh, 0, mIterationCnt * mIndicesPerSphere);
+                } else {
+                    drawRange( mModelMesh, 0, mNumStepsToRender * mIndicesPerSphere);
+                    //gl::draw( mModelMesh );
+                }
             }
         }
     gl::popMatrices();
@@ -483,6 +454,43 @@ void LAxApp::zoom( float w )
     if( w > 0.0f && mCamFovAngle > 90 ) return;
     mCamFovAngle += w;
     updateCameraPerspective(); 
+}
+
+
+/*
+** Init the info panel.
+*/
+void LAxApp::initInfoPanel() 
+{
+    TextLayout layout;
+    layout.clear( ColorA::black() );
+    layout.setColor(ColorA::white() );
+    layout.setBorder(10, 10);
+    layout.setFont( Font( "Arial", 18.0 ) );
+    layout.addLine( "Lorenz Attractor Explorer" );
+    layout.addLine( " " );
+    layout.addLine( "1   increase initial condition x by 0.0001" );
+    layout.addLine( "2   increase initial condition y by 0.0001" );
+    layout.addLine( "3   increase initial condition z by 0.0001" );
+    layout.addLine( "4   reset the initial condition" );
+    layout.addLine( "r   random initial condition" );
+    layout.addLine( "t   random model rotation" );
+    layout.addLine( ".  (period) start iterative draw" );
+    layout.addLine( "/   toggle RK4 / Euler integration" );
+    layout.addLine( ",  (comma) toggle number steps to render" );
+    layout.addLine( "z   reset integration step to 0.01" );
+    layout.addLine( "x   set integration step to 0.001" );
+    layout.addLine( "c   set integration step to 0.0001" );
+    layout.addLine( "   " );
+    layout.addLine( "arrows, mouse drag - rotate model   " );
+    layout.addLine( "+|-, mouse wheel - zoom in/out   " );
+    layout.addLine( "   " );
+    layout.addLine( "?   toggle this information panel" );
+    Surface8u rendered = layout.render( false, false );
+    mInfoPanelSize = rendered.getSize();
+    //console() << "mInfoPanelSize: " << mInfoPanelSize << endl;
+    mInfoPanelTexture = gl::Texture( rendered );
+
 }
 
 

@@ -24,7 +24,8 @@ void LorenzSolver::initOnce()
 {
     mUseRK4 = true;
     mInitCondition = mOriginalInitCondition;
-    mPos = std::vector<Vec3f>( mNumPositions );
+    mSolutions = std::vector<Vec3f>();
+    mSolutions.reserve( mNumPositions );
     mMaxPos = Vec3f( FLT_MIN, FLT_MIN, FLT_MIN );
     mMinPos = Vec3f( FLT_MAX, FLT_MAX, FLT_MAX );
     mCenterPos = Vec3f::zero();
@@ -66,14 +67,14 @@ void LorenzSolver::updateInitialCondition( float dx, float dy, float dz )
 //
 void LorenzSolver::solve()
 {
-    mPos.clear();
+    mSolutions.clear();
     mU0 = mInitCondition;
-    mPos.push_back(mU0);
+    mSolutions.push_back(mU0);
     for (size_t i = 1; i < mStride*mNumPositions; i++) {
         nextStep( mU0, mU1 );
         mU0 = mU1;
         if( i%mStride==0 ) {
-            mPos.push_back( Vec3f(mU1) );
+            mSolutions.push_back( Vec3f(mU1) );
             if( ! mIsCenterCalculated) { trackBounds( mU1 ); }
         }
     }

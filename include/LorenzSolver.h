@@ -32,19 +32,23 @@
 class LorenzSolver
 {
 private:
+
     size_t      mNumPositions;
     ci::Vec3f   mU0, mU1, mOriginalInitCondition, mInitCondition;
     float       mS, mR, mB, mH;
-    std::vector<ci::Vec3f> 
-                mPos;
     size_t      mStride;
     bool        mUseRK4;
     ci::Vec3f   mMinPos, mMaxPos, mCenterPos;
     bool        mIsCenterCalculated;
+
 public:
+
+    std::vector<ci::Vec3f> mSolutions;
+
     LorenzSolver() {};
     LorenzSolver( size_t numPositions, ci::Vec3f initCondition, float H=DEFAULT_H, float pS=DEFAULT_PAR_S, float pR=DEFAULT_PAR_R, float pB=DEFAULT_PAR_B ) :
                   mNumPositions(numPositions), mS(pS), mR(pR), mB(pB), mH(H), mOriginalInitCondition(initCondition), mStride(DEFAULT_STRIDE)  { initOnce(); }
+    
     void        setIntegrationStep( float h, size_t stride=DEFAULT_STRIDE );
     void        setInitialCondition( float x, float y, float z );
     void        updateInitialCondition( float dx, float dy, float dz );
@@ -52,10 +56,11 @@ public:
     void        useRK4()       { mUseRK4 = true; }
     void        useEuler()     { mUseRK4 = false; }
     void        solve();
-    std::vector<ci::Vec3f> 
-                getPositions() { return mPos; }
     ci::Vec3f   getCenterPos();
+    std::vector<ci::Vec3f> &   getSolutions() { return mSolutions; }
+
 private:
+
     void      initOnce() ;
     void      nextStep( ci::Vec3f& u_t0, ci::Vec3f& u_t1 );
     void      nextStepRK4( ci::Vec3f& u_t0, ci::Vec3f& u_t1 );
