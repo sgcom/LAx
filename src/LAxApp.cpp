@@ -11,6 +11,7 @@
 #include "cinder/gl/Texture.h"
 #include "cinder/Text.h"
 #include "cinder/Font.h"
+#include "cinder/CinderMath.h"
 
 #include "Resources.h"
 #include "SphereMeshModel.h"
@@ -21,10 +22,19 @@ using namespace ci;
 using namespace ci::app;
 using namespace std;
 
+#define NUM_ELEMENTS           3000    // Max number of steps (solutions) to be calculated and rendered
 #define MODEL_SPHERE_STACKS 24
 #define MODEL_SPHERE_SLICES 24
 
-#define MAX_STEPS   3200    // Max number of steps (solutions)
+
+struct ModelDescriptor {
+    uint32_t           mId;
+    LorenzSolver       mSolver;
+    gl::VboMesh        mModelMesh;
+    //std::vector<Vec3f> mModelSolutions;
+    Vec3f              mCenterPos;
+    //uint32_t           mModelNumElements;
+};
 
 
 class LAxApp : public AppNative 
@@ -36,13 +46,11 @@ private:
     Vec4f              mLightPosition;
     float              mCamFovAngle;
     float              mRotationStep;
-    LorenzSolver       mSolver;
     SphereMeshModel    mSphereModel;
-    gl::VboMesh        mModelMesh;
+    
+    //LorenzSolver       mSolver;
+    //gl::VboMesh        mModelMesh;
     uint32_t           mIndicesPerSphere;
-    std::vector<Vec3f> mModelPositions;
-    uint32_t           mModelNumElements;
-    Vec3f              mCenterPos;
     uint32_t           mNumStepsToRender;
     uint32_t           mIterationCnt;
     bool               mIterativeDraw;
@@ -53,6 +61,9 @@ private:
     Vec2i              mInfoPanelSize;
     bool               mDisplayInfoPanel;
     bool               mUpdateModel;
+    Vec3f              mCenterPos;
+    uint32_t           mNumModels;
+    std::vector<ModelDescriptor> mModels;
 
 public:
 
@@ -98,9 +109,12 @@ void LAxApp::setup()
 {
     // Random numbers generator
     mRand = Rand();
+
+    mNumModels = 2;
+
     // Info panel
     initInfoPanel();
-    mDisplayInfoPanel = true;
+    mDisplayInfoPanel = false;
     mUpdateModel = true;
 
     // CAMERA: ...
@@ -115,7 +129,7 @@ void LAxApp::setup()
 
     // MODEL: Init the model, see initModel()
     initModel();
-    mNumStepsToRender = MAX_STEPS;
+    mNumStepsToRender = NUM_ELEMENTS;
     mIterationCnt = 0;
     mIterativeDraw = false;
     mCenterPos = Vec3f::zero(); // model center - will be updated later
@@ -148,43 +162,6 @@ void LAxApp::setup()
 
 
 /*
-** Init the info panel.
-*/
-void LAxApp::initInfoPanel() 
-{
-    TextLayout layout;
-    layout.clear( ColorA::black() );
-    layout.setColor(ColorA::white() );
-    layout.setBorder(10, 10);
-    layout.setFont( Font( "Arial", 18.0 ) );
-    layout.addLine( "Lorenz Attractor Explorer" );
-    layout.addLine( " " );
-    layout.addLine( "1   increase initial condition x by 0.0001" );
-    layout.addLine( "2   increase initial condition y by 0.0001" );
-    layout.addLine( "3   increase initial condition z by 0.0001" );
-    layout.addLine( "4   reset the initial condition" );
-    layout.addLine( "r   random initial condition" );
-    layout.addLine( "t   random model rotation" );
-    layout.addLine( ".  (period) start iterative draw" );
-    layout.addLine( "/   toggle RK4 / Euler integration" );
-    layout.addLine( ",  (comma) toggle number steps to render" );
-    layout.addLine( "z   reset integration step to 0.01" );
-    layout.addLine( "x   set integration step to 0.001" );
-    layout.addLine( "c   set integration step to 0.0001" );
-    layout.addLine( "   " );
-    layout.addLine( "arrows, mouse drag - rotate model   " );
-    layout.addLine( "+|-, mouse wheel - zoom in/out   " );
-    layout.addLine( "   " );
-    layout.addLine( "?   toggle this information panel" );
-    Surface8u rendered = layout.render( false, false );
-    mInfoPanelSize = rendered.getSize();
-    //console() << "mInfoPanelSize: " << mInfoPanelSize << endl;
-    mInfoPanelTexture = gl::Texture( rendered );
-
-}
-
-
-/*
 ** This method builds the model. 
 ** Our model here can be thought of as having 3 components:
 **
@@ -197,32 +174,43 @@ void LAxApp::initInfoPanel()
 */
 void LAxApp::initModel ()
 {
-    // Lorenz Equations Solver, starting from given initial condition
-    mSolver = LorenzSolver( MAX_STEPS, Vec3f(0.1f, 0.1f, 0.1f) );
-    // 
-    // 3D sphere mesh model to visualize the solution
-    mSphereModel = SphereMeshModel( MODEL_SPHERE_SLICES, MODEL_SPHERE_STACKS, 0.8f );
-    // here we put the different parts of the model together;
-    mModelNumElements = MAX_STEPS;
-    mIndicesPerSphere = 6 * MODEL_SPHERE_SLICES * (MODEL_SPHERE_STACKS-1);
-    uint32_t nVerticesPerSphere= MODEL_SPHERE_SLICES * (MODEL_SPHERE_STACKS-1) + 2;
-    uint32_t nVertices = mModelNumElements * nVerticesPerSphere;
-    uint32_t nIndices  = mModelNumElements * mIndicesPerSphere;
-    gl::VboMesh::Layout layout;
-    layout.setStaticIndices();
-    layout.setStaticNormals();
-    layout.setDynamicPositions();
-    layout.setDynamicColorsRGB();
-    vector<uint32_t> indices;
-    vector<Vec3f> normals;
-    for( uint32_t i=0; i<mModelNumElements; i++ ) {
-        mSphereModel.getStaticNormals( normals );
-        mSphereModel.getStaticIndices( i * nVerticesPerSphere, indices );
+    for( uint32_t i=0; i < mNumModels; i++ ) {
+        ModelDescriptor md;
+        mModels.push_back( md );
     }
-    assert( nIndices == indices.size() );
-    mModelMesh = gl::VboMesh( nVertices, nIndices, layout, GL_TRIANGLES );
-    mModelMesh.bufferIndices( indices );
-    mModelMesh.bufferNormals( normals );
+    uint32_t mid = 0;
+    for( auto mit=mModels.begin(); mit != mModels.end(); ++mit ) {
+        mSphereModel = SphereMeshModel( MODEL_SPHERE_SLICES, MODEL_SPHERE_STACKS, 0.8f );
+        //uint32_t numElements = MAX_STEPS;
+        mIndicesPerSphere = 6 * MODEL_SPHERE_SLICES * (MODEL_SPHERE_STACKS-1);
+        uint32_t nVerticesPerSphere= MODEL_SPHERE_SLICES * (MODEL_SPHERE_STACKS-1) + 2;
+        uint32_t nVertices = NUM_ELEMENTS * nVerticesPerSphere;
+        uint32_t nIndices  = NUM_ELEMENTS * mIndicesPerSphere;
+        gl::VboMesh::Layout layout;
+        layout.setStaticIndices();
+        layout.setStaticNormals();
+        layout.setDynamicPositions();
+        layout.setDynamicColorsRGB();
+        vector<uint32_t> indices;
+        vector<Vec3f> normals;
+        for( auto i=0; i<NUM_ELEMENTS; i++ ) {
+            mSphereModel.getStaticNormals( normals );
+            mSphereModel.getStaticIndices( i * nVerticesPerSphere, indices );
+        }
+        assert( nIndices == indices.size() );
+        mit->mId = mid++;
+        mit->mSolver = LorenzSolver( NUM_ELEMENTS, Vec3f(0.1f+0.001f*float(mid), 0.2f, 0.3f) );
+        mit->mModelMesh = gl::VboMesh( nVertices, nIndices, layout, GL_TRIANGLES );
+        mit->mModelMesh.bufferIndices( indices );
+        mit->mModelMesh.bufferNormals( normals );
+    }
+
+    // Lorenz Equations Solver, starting from given initial condition
+//    mSolver = LorenzSolver( MAX_STEPS, Vec3f(0.1f, 0.1f, 0.1f) );
+    // 
+    //mModelMesh = gl::VboMesh( nVertices, nIndices, layout, GL_TRIANGLES );
+    //mModelMesh.bufferIndices( indices );
+    //mModelMesh.bufferNormals( normals );
 }
 
 
@@ -259,21 +247,51 @@ void LAxApp::update()
     if( mUpdateModel ) {
         //console() << "Updating the model..." << endl;
         mUpdateModel = false;
-        mSolver.solve();
-        vector<Vec3f> positions = mSolver.getPositions();
-        size_t numElements = positions.size();
-        mCenterPos = mSolver.getCenterPos();
-        Color clr = Color::black();
-        gl::VboMesh::VertexIter vertexIter = mModelMesh.mapVertexBuffer();
-        vector<Vec3f>::iterator e=positions.begin();
-        for( uint32_t i=0; e != positions.end(); ++e, i++ ) {
-            // color by iteration count; starting blue, each following solution gets warmer.
-            clr.r = 0.2f + 0.8f * float(i)/float(numElements);
-            clr.b = 0.2f + 0.8f * (1.0f-clr.r);
-            clr.g = 0.35f; 
-            // update the VBO positions and colors
-            mSphereModel.updateVBO( vertexIter, *e, clr);
+        mCenterPos = Vec3f::zero();
+        int i = 0;
+        for( auto mit=mModels.begin(); mit != mModels.end(); ++mit ) {
+            mit->mSolver.solve();
+            vector<Vec3f> positions = mit->mSolver.getPositions();
+            size_t numElements = positions.size();
+            mCenterPos += mit->mSolver.getCenterPos();
+
+            float h = 0.05f+float(i++)/mNumModels;
+            Color clr = Color(CM_HSV, h, 0.75f, 0.9f);
+
+            gl::VboMesh::VertexIter vertexIter = mit->mModelMesh.mapVertexBuffer();
+            vector<Vec3f>::iterator e=positions.begin();
+            for( uint32_t i=0; e != positions.end(); ++e, i++ ) {
+                // update the VBO positions and colors
+                mSphereModel.updateVBO( vertexIter, *e, clr);
+            }
+
+            ////Color clr = Color::black();
+            ////gl::VboMesh::VertexIter vertexIter = mit->mModelMesh.mapVertexBuffer();
+            ////vector<Vec3f>::iterator e=positions.begin();
+            ////for( uint32_t i=0; e != positions.end(); ++e, i++ ) {
+            ////    // color by iteration count; starting blue, each following solution gets warmer.
+            ////    clr.r = 0.2f + 0.8f * float(i)/float(numElements);
+            ////    clr.b = 0.2f + 0.8f * (1.0f-clr.r);
+            ////    clr.g = 0.35f; 
+            ////    // update the VBO positions and colors
+            ////    mSphereModel.updateVBO( vertexIter, *e, clr);
+            ////}
         }
+        mCenterPos /= float(mNumModels);
+        ////////vector<Vec3f> positions = mSolver.getPositions();
+        ////////size_t numElements = positions.size();
+        ////////mCenterPos = mSolver.getCenterPos();
+        //////Color clr = Color::black();
+        //////gl::VboMesh::VertexIter vertexIter = mModelMesh.mapVertexBuffer();
+        //////vector<Vec3f>::iterator e=positions.begin();
+        //////for( uint32_t i=0; e != positions.end(); ++e, i++ ) {
+        //////    // color by iteration count; starting blue, each following solution gets warmer.
+        //////    clr.r = 0.2f + 0.8f * float(i)/float(numElements);
+        //////    clr.b = 0.2f + 0.8f * (1.0f-clr.r);
+        //////    clr.g = 0.35f; 
+        //////    // update the VBO positions and colors
+        //////    mSphereModel.updateVBO( vertexIter, *e, clr);
+        //////}
     }
     if( mIterativeDraw ) {
         //mIterationCnt++;
@@ -286,8 +304,8 @@ void LAxApp::update()
         } else if( mIterationCnt == 90 ) {
             step = 10;
         } 
-        if( mIterationCnt < mModelNumElements ) {
-            mIterationCnt += step ;
+        if( mIterationCnt < mNumStepsToRender ) {
+            mIterationCnt += 1;//step ;
         } else {
             mIterativeDraw = false;
         }
@@ -306,12 +324,15 @@ void LAxApp::draw()
     glEnable( GL_LIGHTING );
     gl::pushMatrices();
         gl::translate( -mCenterPos );
-        if( mModelMesh ) {
-            if( mIterativeDraw ) {
-                drawRange( mModelMesh, 0, mIterationCnt * mIndicesPerSphere);
-            } else {
-                drawRange( mModelMesh, 0, mNumStepsToRender * mIndicesPerSphere);
-                //gl::draw( mModelMesh );
+        for( auto mit=mModels.begin(); mit != mModels.end(); ++mit ) {
+            if( mit->mModelMesh ) {
+                if( mIterativeDraw ) {
+                    auto nv = min(uint32_t(50), mIterationCnt-1);
+                    drawRange( mit->mModelMesh, (mIterationCnt-nv) * mIndicesPerSphere, nv * mIndicesPerSphere);
+                } else {
+                    drawRange( mit->mModelMesh, 0, mNumStepsToRender * mIndicesPerSphere);
+                    //gl::draw( mModelMesh );
+                }
             }
         }
     gl::popMatrices();
@@ -337,43 +358,59 @@ void LAxApp::draw()
 void LAxApp::keyDown( KeyEvent event ) 
 {
     if( event.getChar() == '1' ) {
-        mSolver.updateInitialCondition(0.0001f, 0.0f, 0.0f);
+        for_each( mModels.begin(), mModels.end(), [](ModelDescriptor& m) { 
+            m.mSolver.updateInitialCondition(0.001f, 0.0f, 0.0f);
+        });
         mUpdateModel = true;
     } else if( event.getChar() == '2' ) {
-        mSolver.updateInitialCondition(0.0f, 0.0001f, 0.0f);
+        for_each( mModels.begin(), mModels.end(), [](ModelDescriptor& m) { 
+            m.mSolver.updateInitialCondition(0.0f, 0.001f, 0.0f);
+        });
         mUpdateModel = true;
     } else if( event.getChar() == '3' ) {
-        mSolver.updateInitialCondition(0.0f, 0.0f, 0.0001f);
+        for_each( mModels.begin(), mModels.end(), [](ModelDescriptor& m) { 
+            m.mSolver.updateInitialCondition(0.0f, 0.0f, 0.001f);
+        });
         mUpdateModel = true;
     } else if( event.getChar() == '4' ) {
-        mSolver.setInitialCondition(0.1f, 0.1f, 0.1f);
+        uint16_t i = 0;
+        for_each( mModels.begin(), mModels.end(), [&i](ModelDescriptor& m) { 
+            m.mSolver.setInitialCondition(0.1f+0.001f*float(++i), 0.2f, 0.3f);
+        });
         mUpdateModel = true;
     } else if( event.getChar() == '5' ) {
-        mSolver.setInitialCondition(12.0f,-41.0f,17.0f);
+        for_each( mModels.begin(), mModels.end(), [](ModelDescriptor& m) { 
+            m.mSolver.setInitialCondition(12.0f,-41.0f,17.0f);
+        });
         mUpdateModel = true;
     } else if( event.getChar() == '6' ) {
-        mSolver.setInitialCondition(-4.0f,31.0f,-33.0f);
+        for_each( mModels.begin(), mModels.end(), [](ModelDescriptor& m) { 
+            m.mSolver.setInitialCondition(-4.0f,31.0f,-33.0f);
+        });
         mUpdateModel = true;
     } else if( event.getChar() == '7' ) {
-        mSolver.setInitialCondition(10.2f, -41.7f, -47.8f);
+        for_each( mModels.begin(), mModels.end(), [](ModelDescriptor& m) { 
+            m.mSolver.setInitialCondition(10.2f, -41.7f, -47.8f);
+        });
         mUpdateModel = true;
-        //10.1529,-41.688,-47.7567
     } else if( event.getChar() == 'r' ) {
         // random initial condition
-        Vec3f rv = mRand.nextFloat(70.0f) * mRand.nextVec3f();
-        console() << "Init condition: " << rv << endl;
-        mSolver.setInitialCondition( rv.x, rv.y, rv.z );
+        for_each( mModels.begin(), mModels.end(), [=](ModelDescriptor& m) { 
+            Vec3f rv = mRand.nextFloat(70.0f) * mRand.nextVec3f();
+            console() << "Init condition: " << rv << endl;
+            m.mSolver.setInitialCondition( rv.x, rv.y, rv.z );
+        });
+        //mSolver.setInitialCondition( rv.x, rv.y, rv.z );
         mUpdateModel = true;
     } else if( event.getChar() == 't' ) {
         rotateModel(mRand.nextFloat(6.28f), mRand.nextFloat(6.28f) );
     } else if( event.getChar() == ',' ) {
         mNumStepsToRender =
-            mNumStepsToRender == MAX_STEPS     ? MAX_STEPS/100 :
-            mNumStepsToRender == MAX_STEPS/100 ? MAX_STEPS/10  :
-            mNumStepsToRender == MAX_STEPS/10  ? MAX_STEPS/2   :
-                                                 MAX_STEPS     ;
+            mNumStepsToRender == NUM_ELEMENTS     ? NUM_ELEMENTS/100 :
+            mNumStepsToRender == NUM_ELEMENTS/100 ? NUM_ELEMENTS/10  :
+            mNumStepsToRender == NUM_ELEMENTS/10  ? NUM_ELEMENTS/2   :
+                                                    NUM_ELEMENTS     ;
         console() << "mNumStepsToRender: " << mNumStepsToRender << endl;
-
     } else if( event.getCode() == app::KeyEvent::KEY_LEFT ) {
         // rotate left
         rotateModel( mRotationStep, 0.0f );
@@ -391,19 +428,27 @@ void LAxApp::keyDown( KeyEvent event )
     } else if( event.getChar() == '-' ) {
         zoom(1.0f);
     } else if( event.getChar() == '/' ) {
-        mSolver.useRK4Toggle();
+        for_each( mModels.begin(), mModels.end(), [](ModelDescriptor& m) { 
+            m.mSolver.useRK4Toggle();
+        });
         mUpdateModel = true;
     } else if( event.getChar() == '.' ) {
         mIterationCnt = 0;
         mIterativeDraw = true; //! mIterativeDraw;
     } else if( event.getChar() == 'z' ) {
-        mSolver.setIntegrationStep( 0.01f, 1 );
+        for_each( mModels.begin(), mModels.end(), [](ModelDescriptor& m) { 
+            m.mSolver.setIntegrationStep( 0.01f, 1 );
+        });
         mUpdateModel = true;
     } else if( event.getChar() == 'x' ) {
-        mSolver.setIntegrationStep( 0.001f, 10 );
+        for_each( mModels.begin(), mModels.end(), [](ModelDescriptor& m) { 
+            m.mSolver.setIntegrationStep( 0.001f, 10 );
+        });
         mUpdateModel = true;
     } else if( event.getChar() == 'c' ) {
-        mSolver.setIntegrationStep( 0.0001f, 100 );
+        for_each( mModels.begin(), mModels.end(), [](ModelDescriptor& m) { 
+            m.mSolver.setIntegrationStep( 0.0001f, 100 );
+        });
         mUpdateModel = true;
     } else if( event.getChar() == '?' ) {
         mDisplayInfoPanel = ! mDisplayInfoPanel;
@@ -483,6 +528,42 @@ void LAxApp::zoom( float w )
     if( w > 0.0f && mCamFovAngle > 90 ) return;
     mCamFovAngle += w;
     updateCameraPerspective(); 
+}
+
+
+/*
+** Init the info panel.
+*/
+void LAxApp::initInfoPanel() 
+{
+    TextLayout layout;
+    layout.clear( ColorA::black() );
+    layout.setColor(ColorA::white() );
+    layout.setBorder(10, 10);
+    layout.setFont( Font( "Arial", 18.0 ) );
+    layout.addLine( "Lorenz Attractor Explorer" );
+    layout.addLine( " " );
+    layout.addLine( "1   increase initial condition x by 0.0001" );
+    layout.addLine( "2   increase initial condition y by 0.0001" );
+    layout.addLine( "3   increase initial condition z by 0.0001" );
+    layout.addLine( "4   reset the initial condition" );
+    layout.addLine( "r   random initial condition" );
+    layout.addLine( "t   random model rotation" );
+    layout.addLine( ".  (period) start iterative draw" );
+    layout.addLine( "/   toggle RK4 / Euler integration" );
+    layout.addLine( ",  (comma) toggle number steps to render" );
+    layout.addLine( "z   reset integration step to 0.01" );
+    layout.addLine( "x   set integration step to 0.001" );
+    layout.addLine( "c   set integration step to 0.0001" );
+    layout.addLine( "   " );
+    layout.addLine( "arrows, mouse drag - rotate model   " );
+    layout.addLine( "+|-, mouse wheel - zoom in/out   " );
+    layout.addLine( "   " );
+    layout.addLine( "?   toggle this information panel" );
+    Surface8u rendered = layout.render( false, false );
+    mInfoPanelSize = rendered.getSize();
+    //console() << "mInfoPanelSize: " << mInfoPanelSize << endl;
+    mInfoPanelTexture = gl::Texture( rendered );
 }
 
 
