@@ -134,7 +134,7 @@ void LAxApp::setup()
     GLfloat global_ambient[] = { 0.2f, 0.2f, 0.2f, 1.0f };
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, global_ambient);
 
-    GLfloat lightColorDiffuse[] = {0.9f, 0.9f, 0.9f, 1.0f};
+    GLfloat lightColorDiffuse[] = {1.0f, 1.0f, 1.0f, 1.0f};
     GLfloat lightColorSpecular[] = { 0.4f, 0.4f, 0.4f, 1.0f };
     GLfloat lightColorAmbient[] = { 0.1f, 0.2f, 0.3f, 1.0f };
     glLightfv( GL_LIGHT0, GL_AMBIENT, lightColorAmbient );
@@ -268,8 +268,8 @@ void LAxApp::update()
         vector<Vec3f>::iterator e=positions.begin();
         for( uint32_t i=0; e != positions.end(); ++e, i++ ) {
             // color by iteration count; starting blue, each following solution gets warmer.
-            clr.r = 0.2f + 0.8f * float(i)/float(numElements);
-            clr.b = 0.2f + 0.8f * (1.0f-clr.r);
+            clr.r = float(i)/float(numElements);
+            clr.b = 1.0f - clr.r;
             clr.g = 0.35f; 
             // update the VBO positions and colors
             mSphereModel.updateVBO( vertexIter, *e, clr);
@@ -439,7 +439,7 @@ void LAxApp::mouseDrag( MouseEvent event )
 void LAxApp::mouseWheel( MouseEvent event )
 {
     //console() << "mouse wheel: " << event.getWheelIncrement() << endl;
-    zoom( event.getWheelIncrement() );
+    zoom( -event.getWheelIncrement() );
 }
 
 
