@@ -24,7 +24,7 @@ using namespace std;
 #define MODEL_SPHERE_STACKS 10
 #define MODEL_SPHERE_SLICES 20
 
-#define MAX_STEPS   3200    // Max number of steps (solutions)
+#define MAX_STEPS   3000    // Max number of steps (solutions)
 
 
 class LAxApp : public AppNative 
@@ -53,6 +53,7 @@ private:
     bool               mDisplayInfoPanel;
     bool               mUpdateModel;
     bool               mViewModelEnabled;
+    bool               mAutoRotate;
 
 public:
 
@@ -104,6 +105,7 @@ void LAxApp::setup()
     mDisplayInfoPanel = true;
     mUpdateModel = true;
     mViewModelEnabled = true; // currently not used
+    mAutoRotate = false;
 
     // CAMERA: ...
     mCamEyePoint = Vec3f( 30.6671f, -40.4094f, -33.9354f ); // initial eye point
@@ -244,6 +246,9 @@ void LAxApp::update()
             mSphereModel.updateVBO( vertexIter, *e, clr);
         }
     }
+    if( mAutoRotate ) {
+        rotateModel( 0.005f, 0.005f );
+    }
     if( mIterativeDraw ) {
         //mIterationCnt++;
         if( mIterationCnt == 0 ) {
@@ -293,7 +298,7 @@ void LAxApp::draw()
         gl::pushMatrices();
             gl::color( 1.0f, 1.0f, 1.0f, 0.66f );
             gl::setMatricesWindow( getWindowSize() );
-            Vec2i textLoc = ( getWindowSize() - mInfoPanelSize ) / 2;
+            Vec2i textLoc(20, 20); // = ( getWindowSize() - mInfoPanelSize ) / 2;
             Area textArea( textLoc, textLoc + mInfoPanelTexture.getSize() );
             gl::draw( mInfoPanelTexture, textLoc );
             gl::drawStrokedRect( textArea );
@@ -337,6 +342,8 @@ void LAxApp::keyDown( KeyEvent event )
         mUpdateModel = true;
     } else if( event.getChar() == 't' ) {
         rotateModel(mRand.nextFloat(6.28f), mRand.nextFloat(6.28f) );
+    } else if( event.getChar() == 'y' ) {
+        mAutoRotate = ! mAutoRotate;
     } else if( event.getChar() == ',' ) {
         mNumStepsToRender =
             mNumStepsToRender == MAX_STEPS     ? MAX_STEPS/100 :
@@ -475,6 +482,7 @@ void LAxApp::initInfoPanel()
     layout.addLine( "4   reset the initial condition" );
     layout.addLine( "r   random initial condition" );
     layout.addLine( "t   random model rotation" );
+    layout.addLine( "y   toggle auto rotation" );
     layout.addLine( ".  (period) start iterative draw" );
     layout.addLine( "/   toggle RK4 / Euler integration" );
     layout.addLine( ",  (comma) toggle number steps to render" );
