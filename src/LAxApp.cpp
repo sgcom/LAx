@@ -33,8 +33,8 @@ private:
 
     CameraPersp        mCam;
     Vec3f              mCamEyePoint, mCamTarget, mCamUp;
-    Vec4f              mLightPosition;
     float              mCamFovAngle;
+    Vec4f              mLightPosition;
     float              mRotationStep;
     LorenzSolver       mSolver;
     SphereMeshModel    mSphereModel;
@@ -51,7 +51,7 @@ private:
     gl::Texture        mInfoPanelTexture;
     Vec2i              mInfoPanelSize;
     bool               mDisplayInfoPanel;
-    bool               mUpdateModel;
+    bool               mNeed2updateModel;
     bool               mViewModelEnabled;
     bool               mAutoRotate;
 
@@ -103,7 +103,7 @@ void LAxApp::setup()
     // Info panel
     initInfoPanel();
     mDisplayInfoPanel = true;
-    mUpdateModel = true;
+    mNeed2updateModel = true;
     mViewModelEnabled = true; // currently not used
     mAutoRotate = false;
 
@@ -226,11 +226,11 @@ void LAxApp::update()
     static size_t step = 0;
 
     // Rebuild the model etc only on change.
-    //mUpdateModel = true;
-    if( mUpdateModel ) {
+    //mNeed2updateModel = true;
+    if( mNeed2updateModel ) {
         //mSolver.updateInitialCondition(0.0001f, 0.0f, 0.0f);
         //console() << "Updating the model..." << endl;
-        mUpdateModel = false;
+        mNeed2updateModel = false;
         mSolver.solve();
         vector<ci::Vec3f>& positions = mSolver.getSolutions();
         mCenterPos = mSolver.getCenterPos();
@@ -253,14 +253,14 @@ void LAxApp::update()
         //mIterationCnt++;
         if( mIterationCnt == 0 ) {
             step = 1;
-        } else if( mIterationCnt == 30 ) {
+        } else if( mIterationCnt == 50 ) {
             step = 2;
-        } else if( mIterationCnt == 60 ) {
+        } else if( mIterationCnt == 100 ) {
             step = 5;
-        } else if( mIterationCnt == 90 ) {
+        } else if( mIterationCnt == 150 ) {
             step = 10;
         } 
-        if( mIterationCnt < mModelNumElements ) {
+        if( mIterationCnt < mNumStepsToRender ) {
             mIterationCnt += step ;
         } else {
             mIterativeDraw = false;
@@ -314,32 +314,32 @@ void LAxApp::keyDown( KeyEvent event )
 {
     if( event.getChar() == '1' ) {
         mSolver.updateInitialCondition(0.0001f, 0.0f, 0.0f);
-        mUpdateModel = true;
+        mNeed2updateModel = true;
     } else if( event.getChar() == '2' ) {
         mSolver.updateInitialCondition(0.0f, 0.0001f, 0.0f);
-        mUpdateModel = true;
+        mNeed2updateModel = true;
     } else if( event.getChar() == '3' ) {
         mSolver.updateInitialCondition(0.0f, 0.0f, 0.0001f);
-        mUpdateModel = true;
+        mNeed2updateModel = true;
     } else if( event.getChar() == '4' ) {
         mSolver.setInitialCondition(0.1f, 0.1f, 0.1f);
-        mUpdateModel = true;
+        mNeed2updateModel = true;
     } else if( event.getChar() == '5' ) {
         mSolver.setInitialCondition(12.0f,-41.0f,17.0f);
-        mUpdateModel = true;
+        mNeed2updateModel = true;
     } else if( event.getChar() == '6' ) {
         mSolver.setInitialCondition(-4.0f,31.0f,-33.0f);
-        mUpdateModel = true;
+        mNeed2updateModel = true;
     } else if( event.getChar() == '7' ) {
         mSolver.setInitialCondition(10.2f, -41.7f, -47.8f);
-        mUpdateModel = true;
+        mNeed2updateModel = true;
         //10.1529,-41.688,-47.7567
     } else if( event.getChar() == 'r' ) {
         // random initial condition
         Vec3f rv = mRand.nextFloat(70.0f) * mRand.nextVec3f();
         console() << "Init condition: " << rv << endl;
         mSolver.setInitialCondition( rv.x, rv.y, rv.z );
-        mUpdateModel = true;
+        mNeed2updateModel = true;
     } else if( event.getChar() == 't' ) {
         rotateModel(mRand.nextFloat(6.28f), mRand.nextFloat(6.28f) );
     } else if( event.getChar() == 'y' ) {
@@ -370,19 +370,19 @@ void LAxApp::keyDown( KeyEvent event )
         zoom(1.0f);
     } else if( event.getChar() == '/' ) {
         mSolver.useRK4Toggle();
-        mUpdateModel = true;
+        mNeed2updateModel = true;
     } else if( event.getChar() == '.' ) {
         mIterationCnt = 0;
         mIterativeDraw = true; //! mIterativeDraw;
     } else if( event.getChar() == 'z' ) {
         mSolver.setIntegrationStep( 0.01f, 1 );
-        mUpdateModel = true;
+        mNeed2updateModel = true;
     } else if( event.getChar() == 'x' ) {
         mSolver.setIntegrationStep( 0.001f, 10 );
-        mUpdateModel = true;
+        mNeed2updateModel = true;
     } else if( event.getChar() == 'c' ) {
         mSolver.setIntegrationStep( 0.0001f, 100 );
-        mUpdateModel = true;
+        mNeed2updateModel = true;
     } else if( event.getChar() == '?' ) {
         mDisplayInfoPanel = ! mDisplayInfoPanel;
     }
