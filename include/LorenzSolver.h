@@ -48,13 +48,10 @@ public:
     LorenzSolver() {};
     LorenzSolver( size_t numPositions, ci::Vec3f initCondition, float H=DEFAULT_H, float pS=DEFAULT_PAR_S, float pR=DEFAULT_PAR_R, float pB=DEFAULT_PAR_B ) :
                   mNumPositions(numPositions), mS(pS), mR(pR), mB(pB), mH(H), mOriginalInitCondition(initCondition), mStride(DEFAULT_STRIDE)  { initOnce(); }
-    
-    void        setIntegrationStep( float h, size_t stride=DEFAULT_STRIDE );
-    void        setInitialCondition( float x, float y, float z );
-    void        updateInitialCondition( float dx, float dy, float dz );
-    void        useRK4Toggle() { mUseRK4 = ! mUseRK4; }
-    void        useRK4()       { mUseRK4 = true; }
-    void        useEuler()     { mUseRK4 = false; }
+    void        setParameters( float s, float r, float b ) { mS = s; mR = r; mB = b; }
+    void        setIntegrationStep( float h, size_t stride=DEFAULT_STRIDE ) { mH = h; mStride = stride; }
+    void        setInitialConditions( ci::Vec3f xyz ) { mInitCondition = xyz; }
+    void        useRK4(bool b) { mUseRK4 = b; }
     void        solve();
     ci::Vec3f   getCenterPos();
     std::vector<ci::Vec3f> &   getSolutions() { return mSolutions; }

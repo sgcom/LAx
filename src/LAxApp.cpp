@@ -11,6 +11,7 @@
 #include "cinder/gl/Texture.h"
 #include "cinder/Text.h"
 #include "cinder/Font.h"
+#include "cinder/params/Params.h"
 
 #include "Resources.h"
 #include "SphereMeshModel.h"
@@ -27,6 +28,20 @@ using namespace std;
 #define MAX_STEPS   3000    // Max number of steps (solutions)
 
 
+#define LORENZ_DEFAULT_INITIAL_CONDITION    Vec3f(0.1f, 0.1f, 0.1f)
+#define LORENZ_DEFAULT_PARAM_S              10.0f
+#define LORENZ_DEFAULT_PARAM_R              30.0f
+#define LORENZ_DEFAULT_PARAM_B               3.0f
+
+struct LorenzParams {
+    int32_t mNumSteps;
+    bool    mUseRK4;
+    Vec3f   mInitialCondition;
+    float   mParam_S, mParam_R, mParam_B;
+    bool    mAutoIncementX;
+};
+
+
 class LAxApp : public AppNative 
 {
 private:
@@ -39,21 +54,20 @@ private:
     LorenzSolver       mSolver;
     SphereMeshModel    mSphereModel;
     gl::VboMesh        mModelMesh;
-    uint32_t           mIndicesPerSphere;
-    uint32_t           mModelNumElements;
+    int32_t            mIndicesPerSphere;
+    int32_t            mModelNumElements;
     Vec3f              mCenterPos;
-    uint32_t           mNumStepsToRender;
-    uint32_t           mIterationCnt;
+    int32_t            mIterationCnt;
     bool               mIterativeDraw;
     Vec2i              mCurrentMouseDown;
     Vec2i              mInitialMouseDown;
     Rand               mRand;
-    gl::Texture        mInfoPanelTexture;
-    Vec2i              mInfoPanelSize;
-    bool               mDisplayInfoPanel;
-    bool               mNeed2updateModel;
     bool               mViewModelEnabled;
     bool               mAutoRotate;
+   
+    params::InterfaceGlRef	mParams;
+    LorenzParams       mLorenzParams, mOrigParams;
+    float              mAverageFps;
 
 public:
 
@@ -62,7 +76,6 @@ public:
     void  update();
     void  draw();
     void  resize();
-    void  keyDown( KeyEvent event );
     void  mouseDown( MouseEvent event );
     void  mouseDrag( MouseEvent event );
     void  mouseWheel( MouseEvent event );
@@ -71,7 +84,6 @@ private:
 
     void  ppl_initModel();
     void  initModel();
-    void  initInfoPanel();
     void  updateCameraPerspective();
     void  rotateModel( float leftRight, float upDown );
     void  zoom( float w );
@@ -88,7 +100,8 @@ void LAxApp::prepareSettings( Settings *settings )
     // Window size and frame rate
     settings->setWindowSize( 1280, 720 );
     settings->setFrameRate( 30.0f );
-    settings->enableConsoleWindow(true);
+    settings->setTitle( "LAx" );
+    //settings->enableConsoleWindow(true);
 }
 
 
@@ -100,10 +113,17 @@ void LAxApp::setup()
 {
     // Random numbers generator
     mRand = Rand();
-    // Info panel
-    initInfoPanel();
-    mDisplayInfoPanel = true;
-    mNeed2updateModel = true;
+
+    //Initial model params
+    mLorenzParams.mNumSteps = MAX_STEPS;
+    mLorenzParams.mUseRK4 = true;
+    mLorenzParams.mInitialCondition = LORENZ_DEFAULT_INITIAL_CONDITION;
+    mLorenzParams.mParam_S = LORENZ_DEFAULT_PARAM_S;
+    mLorenzParams.mParam_R = LORENZ_DEFAULT_PARAM_R;
+    mLorenzParams.mParam_B = LORENZ_DEFAULT_PARAM_B;
+    mLorenzParams.mAutoIncementX = false;
+    mOrigParams = mLorenzParams;
+
     mViewModelEnabled = true; // currently not used
     mAutoRotate = false;
 
@@ -119,7 +139,6 @@ void LAxApp::setup()
 
     // MODEL: Init the model, see initModel()
     initModel();
-    mNumStepsToRender = MAX_STEPS;
     mIterationCnt = 0;
     mIterativeDraw = false;
     mCenterPos = Vec3f::zero(); // model center - will be updated later
@@ -148,6 +167,31 @@ void LAxApp::setup()
     float materialSpecularRefl[] = { 0.8f, 0.8f, 0.8f, 1.0f };
     glMaterialfv(GL_FRONT, GL_SPECULAR, materialSpecularRefl);
     glMateriali(GL_FRONT, GL_SHININESS, 88);
+
+    // Params (AntTweakBar)
+    //
+    mParams = params::InterfaceGl::create( "Lorenz Attractor Explorer", Vec2i( 320, 300 ) );
+    //int32_t iii = 0;
+    // addParam( const std::string &name, int32_t *intParam, const std::string &optionsStr = "", bool readOnly = false );
+    stringstream ss;
+    ss << "min=50 max=" << MAX_STEPS << " step=10 keyIncr=> keyDecr=<";
+    mParams->addParam( "Steps to render", &mLorenzParams.mNumSteps, ss.str() );
+    mParams->addParam( "Lorenz system param S", &mLorenzParams.mParam_S, "min=1 max=50 step=0.1 keyIncr=S keyDecr=s" );
+    mParams->addParam( "Lorenz system param R", &mLorenzParams.mParam_R, "min=1 max=50 step=0.1 keyIncr=S keyDecr=s" );
+    mParams->addParam( "Lorenz system param B", &mLorenzParams.mParam_B, "min=1 max=50 step=0.1 keyIncr=S keyDecr=s" );
+    mParams->addParam( "Init condition X", &mLorenzParams.mInitialCondition.x, "min=-50 max=50 step=0.01 keyIncr=X keyDecr=x" );
+    mParams->addParam( "Init condition Y", &mLorenzParams.mInitialCondition.y, "min=-50 max=50 step=0.01 keyIncr=Y keyDecr=y" );
+    mParams->addParam( "Init condition Z", &mLorenzParams.mInitialCondition.z, "min=-50 max=50 step=0.01 keyIncr=Z keyDecr=z" );
+    mParams->addParam( "Auto increment initial X by 0.001", &mLorenzParams.mAutoIncementX, "keyIncr=1" );
+    mParams->addParam( "Use RK4 integration", &mLorenzParams.mUseRK4, "keyIncr=/" );
+    mParams->addSeparator();
+    mParams->addButton( "Random initial condition", [this](){mLorenzParams.mInitialCondition = mRand.nextFloat(50.0f) * mRand.nextVec3f();}, "keyIncr=r" );
+    mParams->addButton( "Random rotation", [this](){rotateModel(mRand.nextFloat(6.28f),mRand.nextFloat(6.28f));}, "keyIncr=t" );
+    mParams->addButton( "Start iterative draw", [this](){mIterationCnt = 0;mIterativeDraw = true;}, "keyIncr=." );
+    mParams->addButton( "Reset model", [this](){mLorenzParams=mOrigParams;}, "keyIncr=0" );
+    //Vec3f rv = mRand.nextFloat(70.0f) * mRand.nextVec3f();
+    mParams->addSeparator();
+    mParams->addParam( "Frames per seconf (FPS)", &mAverageFps, "step=0.1", true );
 }
 
 
@@ -184,7 +228,7 @@ void LAxApp::initModel ()
     indices.reserve( nIndices );  // this saves the vector from having to grow many times
     vector<Vec3f> normals;
     normals.reserve( nVertices ); // this saves the vector from having to grow many times
-    for( uint32_t i=0; i<mModelNumElements; i++ ) {
+    for( int32_t i=0; i<mModelNumElements; i++ ) {
         mSphereModel.getStaticNormals( normals );
         mSphereModel.getStaticIndices( i * nVerticesPerSphere, indices );
     }
@@ -225,12 +269,19 @@ void LAxApp::update()
 {
     static size_t step = 0;
 
-    // Rebuild the model etc only on change.
-    //mNeed2updateModel = true;
-    if( mNeed2updateModel ) {
+    mAverageFps = getAverageFps();
+    if( mLorenzParams.mAutoIncementX ) {
+        mLorenzParams.mInitialCondition.x += 0.001f;
+    }
+
+    //TODO rebuild model only on change
+    {
         //mSolver.updateInitialCondition(0.0001f, 0.0f, 0.0f);
         //console() << "Updating the model..." << endl;
-        mNeed2updateModel = false;
+        //mNeed2updateModel = false;
+        mSolver.useRK4( mLorenzParams.mUseRK4 );
+        mSolver.setParameters( mLorenzParams.mParam_S, mLorenzParams.mParam_R, mLorenzParams.mParam_B );
+        mSolver.setInitialConditions( mLorenzParams.mInitialCondition );
         mSolver.solve();
         vector<ci::Vec3f>& positions = mSolver.getSolutions();
         mCenterPos = mSolver.getCenterPos();
@@ -260,7 +311,7 @@ void LAxApp::update()
         } else if( mIterationCnt == 150 ) {
             step = 10;
         } 
-        if( mIterationCnt < mNumStepsToRender ) {
+        if( mIterationCnt < mLorenzParams.mNumSteps ) {
             mIterationCnt += step ;
         } else {
             mIterativeDraw = false;
@@ -285,108 +336,13 @@ void LAxApp::draw()
                 if( mIterativeDraw ) {
                     drawRange( mModelMesh, 0, mIterationCnt * mIndicesPerSphere);
                 } else {
-                    drawRange( mModelMesh, 0, mNumStepsToRender * mIndicesPerSphere);
+                    drawRange( mModelMesh, 0, mLorenzParams.mNumSteps * mIndicesPerSphere);
                     //gl::draw( mModelMesh );
                 }
             }
         }
     gl::popMatrices();
-    //...............................and the info panel
-    if( mDisplayInfoPanel ) {
-        glDisable( GL_LIGHTING );
-        glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
-        gl::pushMatrices();
-            gl::color( 1.0f, 1.0f, 1.0f, 0.66f );
-            gl::setMatricesWindow( getWindowSize() );
-            Vec2i textLoc(20, 20); // = ( getWindowSize() - mInfoPanelSize ) / 2;
-            Area textArea( textLoc, textLoc + mInfoPanelTexture.getSize() );
-            gl::draw( mInfoPanelTexture, textLoc );
-            gl::drawStrokedRect( textArea );
-        gl::popMatrices();
-    }
-}
-
-
-/*
-** Keyboard input handler
-*/
-void LAxApp::keyDown( KeyEvent event ) 
-{
-    if( event.getChar() == '1' ) {
-        mSolver.updateInitialCondition(0.0001f, 0.0f, 0.0f);
-        mNeed2updateModel = true;
-    } else if( event.getChar() == '2' ) {
-        mSolver.updateInitialCondition(0.0f, 0.0001f, 0.0f);
-        mNeed2updateModel = true;
-    } else if( event.getChar() == '3' ) {
-        mSolver.updateInitialCondition(0.0f, 0.0f, 0.0001f);
-        mNeed2updateModel = true;
-    } else if( event.getChar() == '4' ) {
-        mSolver.setInitialCondition(0.1f, 0.1f, 0.1f);
-        mNeed2updateModel = true;
-    } else if( event.getChar() == '5' ) {
-        mSolver.setInitialCondition(12.0f,-41.0f,17.0f);
-        mNeed2updateModel = true;
-    } else if( event.getChar() == '6' ) {
-        mSolver.setInitialCondition(-4.0f,31.0f,-33.0f);
-        mNeed2updateModel = true;
-    } else if( event.getChar() == '7' ) {
-        mSolver.setInitialCondition(10.2f, -41.7f, -47.8f);
-        mNeed2updateModel = true;
-        //10.1529,-41.688,-47.7567
-    } else if( event.getChar() == 'r' ) {
-        // random initial condition
-        Vec3f rv = mRand.nextFloat(70.0f) * mRand.nextVec3f();
-        console() << "Init condition: " << rv << endl;
-        mSolver.setInitialCondition( rv.x, rv.y, rv.z );
-        mNeed2updateModel = true;
-    } else if( event.getChar() == 't' ) {
-        rotateModel(mRand.nextFloat(6.28f), mRand.nextFloat(6.28f) );
-    } else if( event.getChar() == 'y' ) {
-        mAutoRotate = ! mAutoRotate;
-    } else if( event.getChar() == ',' ) {
-        mNumStepsToRender =
-            mNumStepsToRender == MAX_STEPS     ? MAX_STEPS/100 :
-            mNumStepsToRender == MAX_STEPS/100 ? MAX_STEPS/10  :
-            mNumStepsToRender == MAX_STEPS/10  ? MAX_STEPS/2   :
-                                                 MAX_STEPS     ;
-        console() << "mNumStepsToRender: " << mNumStepsToRender << endl;
-
-    } else if( event.getCode() == app::KeyEvent::KEY_LEFT ) {
-        // rotate left
-        rotateModel( mRotationStep, 0.0f );
-    } else if( event.getCode() == app::KeyEvent::KEY_RIGHT ) {
-        // rotate right
-        rotateModel( -mRotationStep, 0.0f );
-    } else if( event.getCode() == app::KeyEvent::KEY_UP ) {
-        // rotate up
-        rotateModel( 0.0f, -mRotationStep );
-    } else if( event.getCode() == app::KeyEvent::KEY_DOWN ) {
-        // rotate down
-        rotateModel( 0.0f, mRotationStep );
-    } else if( event.getChar() == '+' ) {
-        zoom(-1.0f);
-    } else if( event.getChar() == '-' ) {
-        zoom(1.0f);
-    } else if( event.getChar() == '/' ) {
-        mSolver.useRK4Toggle();
-        mNeed2updateModel = true;
-    } else if( event.getChar() == '.' ) {
-        mIterationCnt = 0;
-        mIterativeDraw = true; //! mIterativeDraw;
-    } else if( event.getChar() == 'z' ) {
-        mSolver.setIntegrationStep( 0.01f, 1 );
-        mNeed2updateModel = true;
-    } else if( event.getChar() == 'x' ) {
-        mSolver.setIntegrationStep( 0.001f, 10 );
-        mNeed2updateModel = true;
-    } else if( event.getChar() == 'c' ) {
-        mSolver.setIntegrationStep( 0.0001f, 100 );
-        mNeed2updateModel = true;
-    } else if( event.getChar() == '?' ) {
-        mDisplayInfoPanel = ! mDisplayInfoPanel;
-    }
-    
+    mParams->draw();
 }
 
 
@@ -397,6 +353,7 @@ void LAxApp::mouseDown( MouseEvent event )
 {
     mCurrentMouseDown = mInitialMouseDown = event.getPos();
 }
+
 
 /*
 ** Mouse dragged: rotate the model
@@ -461,44 +418,6 @@ void LAxApp::zoom( float w )
     if( w > 0.0f && mCamFovAngle > 90 ) return;
     mCamFovAngle += w;
     updateCameraPerspective(); 
-}
-
-
-/*
-** Init the info panel.
-*/
-void LAxApp::initInfoPanel() 
-{
-    TextLayout layout;
-    layout.clear( ColorA::black() );
-    layout.setColor(ColorA::white() );
-    layout.setBorder(10, 10);
-    layout.setFont( Font( "Arial", 18.0 ) );
-    layout.addLine( "Lorenz Attractor Explorer" );
-    layout.addLine( " " );
-    layout.addLine( "1   increase initial condition x by 0.0001" );
-    layout.addLine( "2   increase initial condition y by 0.0001" );
-    layout.addLine( "3   increase initial condition z by 0.0001" );
-    layout.addLine( "4   reset the initial condition" );
-    layout.addLine( "r   random initial condition" );
-    layout.addLine( "t   random model rotation" );
-    layout.addLine( "y   toggle auto rotation" );
-    layout.addLine( ".  (period) start iterative draw" );
-    layout.addLine( "/   toggle RK4 / Euler integration" );
-    layout.addLine( ",  (comma) toggle number steps to render" );
-    layout.addLine( "z   reset integration step to 0.01" );
-    layout.addLine( "x   set integration step to 0.001" );
-    layout.addLine( "c   set integration step to 0.0001" );
-    layout.addLine( "   " );
-    layout.addLine( "arrows, mouse drag - rotate model   " );
-    layout.addLine( "+|-, mouse wheel - zoom in/out   " );
-    layout.addLine( "   " );
-    layout.addLine( "?   toggle this information panel" );
-    Surface8u rendered = layout.render( false, false );
-    mInfoPanelSize = rendered.getSize();
-    //console() << "mInfoPanelSize: " << mInfoPanelSize << endl;
-    mInfoPanelTexture = gl::Texture( rendered );
-
 }
 
 

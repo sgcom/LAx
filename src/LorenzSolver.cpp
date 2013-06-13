@@ -33,36 +33,6 @@ void LorenzSolver::initOnce()
 }
 
 
-// Set integration step and stride
-//
-void LorenzSolver::setIntegrationStep( float h, size_t stride )
-{
-    mH = h;
-    mStride = stride;
-}
-
-
-// Set the initial condition 
-//
-void LorenzSolver::setInitialCondition( float x, float y, float z )
-{
-    mInitCondition.x = x;
-    mInitCondition.y = y;
-    mInitCondition.z = z;
-}
-
-
-// Change the initial condition with some small delta,
-// to experiment with the sensitive dependence
-//
-void LorenzSolver::updateInitialCondition( float dx, float dy, float dz )
-{
-    mInitCondition.x += dx;
-    mInitCondition.y += dy;
-    mInitCondition.z += dz;
-}
-
-
 // Calculate the solutions
 //
 void LorenzSolver::solve()
