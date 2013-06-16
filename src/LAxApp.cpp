@@ -13,6 +13,12 @@
 #include "cinder/Font.h"
 #include "cinder/params/Params.h"
 
+
+#include <deque>
+#include <algorithm>
+#include <functional>
+#include <numeric>
+
 #include "Resources.h"
 #include "SphereMeshModel.h"
 #include "LorenzSolver.h"
@@ -39,6 +45,7 @@ struct LorenzParams {
     Vec3f   mInitialCondition;
     float   mParam_S, mParam_R, mParam_B;
     bool    mAutoIncementX;
+    bool    mFindROP; // ROP: "range of predictability"
 };
 
 
@@ -68,6 +75,8 @@ private:
     params::InterfaceGlRef	mParams;
     LorenzParams       mLorenzParams, mOrigParams;
     float              mAverageFps;
+    float              mSi;
+
 
 public:
 
@@ -101,7 +110,7 @@ void LAxApp::prepareSettings( Settings *settings )
     settings->setWindowSize( 1280, 720 );
     settings->setFrameRate( 30.0f );
     settings->setTitle( "LAx" );
-    //settings->enableConsoleWindow(true);
+    settings->enableConsoleWindow(true);
 }
 
 
@@ -123,6 +132,7 @@ void LAxApp::setup()
     mLorenzParams.mParam_B = LORENZ_DEFAULT_PARAM_B;
     mLorenzParams.mAutoIncementX = false;
     mOrigParams = mLorenzParams;
+    mSi = 0.0f;
 
     mViewModelEnabled = true; // currently not used
     mAutoRotate = false;
@@ -170,7 +180,7 @@ void LAxApp::setup()
 
     // Params (AntTweakBar)
     //
-    mParams = params::InterfaceGl::create( "Lorenz Attractor Explorer", Vec2i( 320, 300 ) );
+    mParams = params::InterfaceGl::create( "Lorenz Attractor Explorer", Vec2i( 330, 380 ) );
     //int32_t iii = 0;
     // addParam( const std::string &name, int32_t *intParam, const std::string &optionsStr = "", bool readOnly = false );
     stringstream ss;
@@ -183,6 +193,7 @@ void LAxApp::setup()
     mParams->addParam( "Init condition Y", &mLorenzParams.mInitialCondition.y, "min=-50 max=50 step=0.01 keyIncr=Y keyDecr=y" );
     mParams->addParam( "Init condition Z", &mLorenzParams.mInitialCondition.z, "min=-50 max=50 step=0.01 keyIncr=Z keyDecr=z" );
     mParams->addParam( "Auto increment initial X by 0.001", &mLorenzParams.mAutoIncementX, "keyIncr=1" );
+    mParams->addParam( "Find 'range of predictability'", &mLorenzParams.mFindROP, "keyIncr=p" );
     mParams->addParam( "Use RK4 integration", &mLorenzParams.mUseRK4, "keyIncr=/" );
     mParams->addSeparator();
     mParams->addButton( "Random initial condition", [this](){mLorenzParams.mInitialCondition = mRand.nextFloat(50.0f) * mRand.nextVec3f();}, "keyIncr=r" );
@@ -191,6 +202,7 @@ void LAxApp::setup()
     mParams->addButton( "Reset model", [this](){mLorenzParams=mOrigParams;}, "keyIncr=0" );
     //Vec3f rv = mRand.nextFloat(70.0f) * mRand.nextVec3f();
     mParams->addSeparator();
+    mParams->addParam( "Last solution variance in time", &mSi, "step=0.01", true );
     mParams->addParam( "Frames per seconf (FPS)", &mAverageFps, "step=0.1", true );
 }
 
@@ -268,10 +280,16 @@ void LAxApp::updateCameraPerspective()
 void LAxApp::update()
 {
     static size_t step = 0;
+    static const size_t ssdSize = 10;
+    static std::deque<Vec3f> ssdq;
 
     mAverageFps = getAverageFps();
     if( mLorenzParams.mAutoIncementX ) {
         mLorenzParams.mInitialCondition.x += 0.001f;
+    }
+
+    if( mLorenzParams.mFindROP ) {
+        mLorenzParams.mAutoIncementX = true;
     }
 
     //TODO rebuild model only on change
@@ -296,7 +314,21 @@ void LAxApp::update()
             // update the VBO positions and colors
             mSphereModel.updateVBO( vertexIter, *e, clr);
         }
+        ssdq.push_back( positions[mLorenzParams.mNumSteps-1] );
+        if( ssdq.size() > ssdSize ) {
+            ssdq.pop_front();
+            mSi = 0.0f;
+            for( size_t i=1; i<ssdSize; ++i ) {
+                mSi += ssdq[i].distanceSquared( ssdq[i-1]);
+            }
+            mSi /= (float)ssdSize;
+            if( mLorenzParams.mFindROP && mLorenzParams.mAutoIncementX ) {
+                if( mSi > 10.0f && mLorenzParams.mNumSteps > 50 ) mLorenzParams.mNumSteps -= 5;
+            }
+        }
     }
+
+
     if( mAutoRotate ) {
         rotateModel( 0.005f, 0.005f );
     }
